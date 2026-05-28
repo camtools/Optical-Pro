@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Optical Pro</title>
+<style>
+/* ── RESET ────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+:root {
+  --orange: #FF9500;
+  --orange-glow: rgba(255,149,0,0.15);
+  --bg: #060606;
+  --bar-h: 70px;
+  --radius: 20px;
+}
+body { background:#000; overflow:hidden; -webkit-tap-highlight-color:transparent; touch-action:none; }
+
+/* ── SPLASH ───────────────────────────────────────────── */
+#splash {
+  position:fixed; inset:0;
+  background:#000;
+  display:flex; align-items:center; justify-content:center;
+  z-index:999;
+  transition: transform 0.9s cubic-bezier(0.4,0,0.2,1), opacity 0.65s ease;
+}
+#splash.rotate { transform:rotate(90deg) scale(0.92); }
+#splash.fade   { opacity:0; pointer-events:none; }
+
+#splashInner { text-align:center; user-select:none; }
+
+#splashOptical {
+  font-family:'Arial Black','Arial Bold',Arial,sans-serif;
+  font-weight:900;
+  font-size:clamp(56px,16vw,100px);
+  color:#fff;
+  letter-spacing:-3px;
+  line-height:0.95;
+}
+#splashPro {
+  font-family:-apple-system,'Helvetica Neue',sans-serif;
+  font-weight:100;
+  font-size:clamp(13px,3.5vw,22px);
+  letter-spacing:14px;
+  color:var(--orange);
+  margin-top:10px;
+  padding-left:14px;
+}
+#splashBar {
+  width:36px; height:1px;
+  background:var(--orange);
+  margin:18px auto 0;
+  opacity:0.5;
+}
+
+/* ── APP ──────────────────────────────────────────────── */
+#app { position:fixed; inset:0; }
+
+#video {
+  position:absolute; width:1px; height:1px;
+  opacity:0; pointer-events:none;
+}
+#canvas {
+  position:absolute; inset:0;
+  width:100%; height:100%;
+  display:block;
+}
+
+/* ── TOP BAR ──────────────────────────────────────────── */
+#topbar {
+  position:fixed; top:0; left:0; right:0;
+  padding:max(10px, env(safe-area-inset-top)) 16px 10px;
+  display:flex; justify-content:space-between; align-items:center;
+  background:linear-gradient(to bottom,rgba(0,0,0,0.68),transparent);
+  z-index:40; pointer-events:none;
+}
+.wordmark { display:flex; align-items:baseline; gap:5px; }
+.wm-o {
+  font-family:'Arial Black',Arial,sans-serif;
+  font-weight:900; font-size:13px; color:#fff; letter-spacing:0.5px;
+}
+.wm-p {
+  font-family:-apple-system,sans-serif;
+  font-weight:200; font-size:9px;
+  letter-spacing:5px; color:var(--orange);
+}
+.icon-btn {
+  pointer-events:all;
+  background:rgba(255,255,255,0.07);
+  border:1px solid rgba(255,255,255,0.1);
+  color:#fff; width:36px; height:36px;
+  border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:16px; cursor:pointer;
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  transition:background 0.15s;
+}
+.icon-btn:active { background:rgba(255,149,0,0.2); }
+
+/* ── BOTTOM BAR ───────────────────────────────────────── */
+#bottomBar {
+  position:fixed; bottom:0; left:0; right:0;
+  height:var(--bar-h);
+  background:rgba(7,7,7,0.97);
+  border-top:1px solid rgba(255,149,0,0.16);
+  border-radius:var(--radius) var(--radius) 0 0;
+  z-index:40;
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+}
+#barHandle {
+  width:100%; padding:8px 0 0;
+  display:flex; justify-content:center;
+  cursor:pointer;
+}
+#handlePill {
+  width:34px; height:3px;
+  background:rgba(255,255,255,0.1);
+  border-radius:2px;
+  transition:background 0.15s;
+}
+#bottomBar:active #handlePill { background:rgba(255,149,0,0.3); }
+
+#barContent {
+  display:flex; align-items:center;
+  padding:0 16px;
+  height:calc(var(--bar-h) - 16px);
+}
+
+/* Bar — left: camera */
+#barLeft { flex:1; min-width:0; cursor:pointer; }
+#barCamName {
+  font-family:'Courier New',monospace;
+  font-size:11px; font-weight:bold;
+  color:rgba(255,255,255,0.7);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+#barModeName {
+  font-family:'Courier New',monospace;
+  font-size:9px; color:rgba(255,255,255,0.28);
+  margin-top:2px; white-space:nowrap;
+}
+
+/* Bar — center: focal nav */
+#barCenter { flex:0 0 auto; text-align:center; padding:0 12px; }
+#barSeriesName {
+  font-family:'Courier New',monospace;
+  font-size:8px; letter-spacing:1px;
+  color:rgba(255,255,255,0.25); margin-bottom:1px;
+  white-space:nowrap;
+}
+#barFocalRow { display:flex; align-items:center; gap:0; }
+
+.f-arrow {
+  background:transparent; border:none;
+  color:var(--orange); font-size:24px; line-height:1;
+  padding:0 10px; cursor:pointer;
+  font-family:-apple-system,sans-serif;
+  -webkit-tap-highlight-color:transparent;
+  transition:opacity 0.1s, transform 0.1s;
+  opacity:0.75;
+}
+.f-arrow:disabled { opacity:0.15; cursor:default; }
+.f-arrow:active:not(:disabled) { opacity:1; transform:scale(0.85); }
+
+#navFocalNum {
+  font-family:'Courier New',monospace;
+  font-size:28px; font-weight:bold;
+  color:#fff; letter-spacing:-1px;
+  min-width:54px; text-align:center; line-height:1;
+}
+#navFocalUnit {
+  font-family:'Courier New',monospace;
+  font-size:11px; color:rgba(255,255,255,0.3);
+  align-self:flex-end; margin-bottom:4px; margin-left:-2px;
+}
+
+/* Bar — right: AR + menu */
+#barRight {
+  flex:1; display:flex; flex-direction:column;
+  align-items:flex-end; gap:5px;
+}
+#barARLabel {
+  font-family:'Courier New',monospace;
+  font-size:12px; font-weight:bold;
+  color:var(--orange);
+}
+#barMenuBtn {
+  background:transparent; border:none;
+  color:rgba(255,255,255,0.3); font-size:20px;
+  cursor:pointer; padding:0; line-height:1;
+  transition:color 0.15s;
+}
+#barMenuBtn:active { color:var(--orange); }
+
+/* ── PANEL ────────────────────────────────────────────── */
+#panel {
+  position:fixed; bottom:0; left:0; right:0;
+  max-height:58vh;
+  z-index:35;
+  background:rgba(7,7,7,0.96);
+  backdrop-filter:blur(28px);
+  -webkit-backdrop-filter:blur(28px);
+  border-radius:var(--radius) var(--radius) 0 0;
+  border-top:1px solid rgba(255,149,0,0.12);
+  padding-bottom:var(--bar-h);
+  transform:translateY(100%);
+  transition:transform 0.34s cubic-bezier(0.4,0,0.2,1);
+  overflow-y:auto; -webkit-overflow-scrolling:touch;
+}
+#panel.open { transform:translateY(0); }
+
+/* Tabs */
+.tabs {
+  display:flex;
+  border-bottom:1px solid rgba(255,255,255,0.04);
+  position:sticky; top:0;
+  background:rgba(7,7,7,0.99);
+  border-radius:var(--radius) var(--radius) 0 0;
+  overflow:hidden; z-index:1;
+}
+.tab-btn {
+  flex:1; background:transparent; border:none;
+  border-bottom:2px solid transparent;
+  color:rgba(255,255,255,0.18);
+  padding:13px 4px;
+  font-family:-apple-system,sans-serif;
+  font-size:10px; font-weight:700;
+  letter-spacing:1.5px; cursor:pointer;
+  transition:color 0.12s; text-transform:uppercase;
+}
+.tab-btn.active { color:var(--orange); border-bottom-color:var(--orange); }
+
+.tab-pane { display:none; padding:14px 16px 10px; }
+.tab-pane.active { display:block; }
+
+/* Panel rows */
+.row { display:flex; align-items:flex-start; gap:10px; margin-bottom:14px; }
+.lbl {
+  font-family:-apple-system,sans-serif;
+  color:rgba(255,255,255,0.2); font-size:9px;
+  font-weight:700; letter-spacing:1.5px;
+  text-transform:uppercase; min-width:46px; padding-top:7px;
+}
+.body { flex:1; }
+
+/* Chips — rounded pills */
+.chips { display:flex; gap:6px; flex-wrap:wrap; }
+.chip {
+  background:transparent;
+  border:1px solid rgba(255,255,255,0.09);
+  color:rgba(255,255,255,0.32);
+  padding:6px 13px; border-radius:50px;
+  cursor:pointer;
+  font-family:'Courier New',monospace;
+  font-size:11px; white-space:nowrap;
+  transition:all 0.12s;
+  -webkit-tap-highlight-color:transparent;
+}
+.chip.active {
+  background:var(--orange); border-color:var(--orange);
+  color:#000; font-weight:700;
+}
+
+/* Overlay chips — square-ish */
+.ov-chip {
+  padding:7px 12px; border-radius:10px;
+  border:1px solid rgba(255,255,255,0.07);
+  background:transparent;
+  color:rgba(255,255,255,0.3);
+  font-family:-apple-system,sans-serif;
+  font-size:11px; font-weight:500;
+  cursor:pointer; transition:all 0.12s;
+  -webkit-tap-highlight-color:transparent;
+}
+.ov-chip.active {
+  background:rgba(255,149,0,0.1);
+  border-color:rgba(255,149,0,0.35);
+  color:var(--orange);
+}
+
+select {
+  background:rgba(255,255,255,0.04);
+  border:1px solid rgba(255,255,255,0.09);
+  color:rgba(255,255,255,0.65);
+  padding:8px 12px; border-radius:12px;
+  font-size:12px; width:100%;
+  font-family:'Courier New',monospace;
+  -webkit-appearance:none; appearance:none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23555' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 12px center;
+  padding-right:32px;
+}
+
+.meta {
+  font-family:'Courier New',monospace;
+  color:rgba(255,255,255,0.18); font-size:10px; margin-top:4px;
+}
+.meta span { color:var(--orange); }
+
+input[type=range] { accent-color:var(--orange); width:100%; }
+.fov-row { display:flex; align-items:center; gap:12px; }
+.fov-val { font-family:'Courier New',monospace; color:var(--orange); font-size:14px; min-width:40px; }
+.hint { font-family:-apple-system,sans-serif; color:rgba(255,255,255,0.15); font-size:10px; line-height:1.7; margin-top:4px; }
+.fov-status { font-family:-apple-system,sans-serif; font-size:11px; font-weight:700; }
+</style>
+</head>
+<body>
+
+<!-- ── SPLASH ──────────────────────────────────────────── -->
+<div id="splash">
+  <div id="splashInner">
+    <div id="splashOptical">OPTICAL</div>
+    <div id="splashPro">PRO</div>
+    <div id="splashBar"></div>
+  </div>
+</div>
+
+<!-- ── APP ────────────────────────────────────────────── -->
+<div id="app" style="display:none">
+  <video id="video" muted playsinline autoplay></video>
+  <canvas id="canvas"></canvas>
+
+  <div id="topbar">
+    <div class="wordmark">
+      <span class="wm-o">OPTICAL</span>
+      <span class="wm-p">PRO</span>
+    </div>
+    <button class="icon-btn" onclick="flipCamera()">⇄</button>
+  </div>
+
+  <div id="bottomBar">
+    <div id="barHandle" onclick="togglePanel()">
+      <div id="handlePill"></div>
+    </div>
+    <div id="barContent">
+      <div id="barLeft" onclick="togglePanel()">
+        <div id="barCamName">—</div>
+        <div id="barModeName">—</div>
+      </div>
+      <div id="barCenter">
+        <div id="barSeriesName">—</div>
+        <div id="barFocalRow">
+          <button class="f-arrow" id="btnPrev" onclick="prevFocalEv(event)">‹</button>
+          <span id="navFocalNum">—</span>
+          <span id="navFocalUnit">mm</span>
+          <button class="f-arrow" id="btnNext" onclick="nextFocalEv(event)">›</button>
+        </div>
+      </div>
+      <div id="barRight">
+        <div id="barARLabel">—</div>
+        <button id="barMenuBtn" onclick="togglePanel()">≡</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="panel">
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('camera',this)">CAMERA</button>
+      <button class="tab-btn"        onclick="switchTab('lens',this)">LENS</button>
+      <button class="tab-btn"        onclick="switchTab('overlay',this)">OVERLAY</button>
+      <button class="tab-btn"        onclick="switchTab('fov',this)">FOV</button>
+    </div>
+
+    <div class="tab-pane active" id="pane-camera">
+      <div class="row"><span class="lbl">Brand</span><div class="body chips" id="brandChips"></div></div>
+      <div class="row"><span class="lbl">Model</span><div class="body"><select id="camSel" onchange="onCamChange()"></select></div></div>
+      <div class="row"><span class="lbl">Mode</span> <div class="body"><select id="modeSel" onchange="onModeChange()"></select></div></div>
+      <div class="meta" id="sensorMeta"></div>
+    </div>
+
+    <div class="tab-pane" id="pane-lens">
+      <div class="row"><span class="lbl">Brand</span> <div class="body chips" id="lensBrandChips"></div></div>
+      <div class="row"><span class="lbl">Serie</span> <div class="body"><select id="seriesSel" onchange="onSeriesChange()"></select></div></div>
+      <div class="row"><span class="lbl">Focale</span><div class="body chips" id="focalChips"></div></div>
+      <div class="row"><span class="lbl">Ratio</span> <div class="body chips" id="arChips"></div></div>
+      <div class="meta" id="lensMeta"></div>
+    </div>
+
+    <div class="tab-pane" id="pane-overlay">
+      <div class="row"><span class="lbl">Layers</span><div class="body chips" id="overlayChips"></div></div>
+    </div>
+
+    <div class="tab-pane" id="pane-fov">
+      <div class="row" style="align-items:center;margin-bottom:8px">
+        <span class="lbl">Stato</span>
+        <span class="fov-status" id="fovStatus" style="color:#34c759">&#x25CF; AUTO</span>
+      </div>
+      <div class="row">
+        <span class="lbl">FOV</span>
+        <div class="body">
+          <div class="fov-row">
+            <input type="range" min="40" max="105" value="65" id="fovSlider" oninput="onFovChange()">
+            <span class="fov-val" id="fovVal">65&deg;</span>
+          </div>
+        </div>
+      </div>
+      <div class="hint">Rilevato automaticamente dalla fotocamera.<br>Regola manualmente se necessario.</div>
+      <div class="chips" style="margin-top:10px" id="fovPresets"></div>
+      <button class="chip" style="margin-top:10px" onclick="resetFovAuto()">&#x21BA;&nbsp;Auto-rileva</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── DATABASES ────────────────────────────────────────────────────────────────
+const CAMERAS = {
+  ARRI:[
+    {model:"ALEXA Plus",     year:2011,modes:[{name:"2.8K Open Gate",w:23.76,h:17.82,res:"2880×2160"},{name:"2.8K 16:9",w:23.76,h:13.37,res:"2880×1620"},{name:"2K 16:9",w:23.76,h:13.37,res:"2048×1152"},{name:"2K 4:3",w:23.76,h:17.82,res:"2048×1536"}]},
+    {model:"ALEXA Plus 4:3", year:2012,modes:[{name:"2.8K 4:3",w:23.76,h:17.82,res:"2880×2160"},{name:"2.8K 16:9",w:23.76,h:13.37,res:"2880×1620"},{name:"Anamorphic 4:3",w:23.76,h:17.82,res:"2048×1536"}]},
+    {model:"ALEXA M",        year:2012,modes:[{name:"2.8K Open Gate",w:23.76,h:17.82,res:"2880×2160"},{name:"2.8K 16:9",w:23.76,h:13.37,res:"2880×1620"},{name:"2K 16:9",w:23.76,h:13.37,res:"2048×1152"}]},
+    {model:"ALEXA XT",       year:2013,modes:[{name:"3.2K Open Gate",w:23.76,h:17.82,res:"3168×2376"},{name:"2.8K 16:9",w:23.76,h:13.37,res:"2880×1620"},{name:"2K 16:9",w:23.76,h:13.37,res:"2048×1152"},{name:"2K 4:3",w:23.76,h:17.82,res:"2048×1536"}]},
+    {model:"ALEXA XT Plus",  year:2013,modes:[{name:"3.2K Open Gate",w:23.76,h:17.82,res:"3168×2376"},{name:"4K UHD",w:23.76,h:13.37,res:"3840×2160"},{name:"2.8K 16:9",w:23.76,h:13.37,res:"2880×1620"},{name:"2K 16:9",w:23.76,h:13.37,res:"2048×1152"}]},
+    {model:"ALEXA XT Studio",year:2013,modes:[{name:"3.2K Open Gate",w:23.76,h:17.82,res:"3168×2376"},{name:"ARRIRAW 3K",w:23.76,h:17.82,res:"3072×2304"},{name:"2.8K 16:9",w:23.76,h:13.37,res:"2880×1620"}]},
+    {model:"AMIRA",          year:2014,modes:[{name:"3.4K Open Gate",w:28.17,h:18.13,res:"3424×2202"},{name:"4K UHD",w:23.76,h:13.37,res:"3840×2160"},{name:"2.8K S35",w:23.76,h:13.37,res:"2880×1620"},{name:"2K S35",w:23.76,h:13.37,res:"2048×1152"},{name:"1080p HD",w:23.76,h:13.37,res:"1920×1080"}]},
+    {model:"ALEXA Mini",     year:2015,modes:[{name:"3.4K Open Gate",w:28.17,h:18.13,res:"3424×2202"},{name:"4K UHD",w:23.76,h:13.37,res:"3840×2160"},{name:"2.8K S35",w:23.76,h:13.37,res:"2880×1620"},{name:"2K S35",w:23.76,h:13.37,res:"2048×1152"},{name:"2K 4:3",w:23.76,h:17.82,res:"2048×1536"}]},
+    {model:"ALEXA SXT",      year:2016,modes:[{name:"3.4K Open Gate",w:28.17,h:18.13,res:"3424×2202"},{name:"4K UHD",w:23.76,h:13.37,res:"3840×2160"},{name:"3K S35",w:23.76,h:17.82,res:"3072×2304"},{name:"2.8K S35",w:23.76,h:13.37,res:"2880×1620"}]},
+    {model:"ALEXA SXT W",    year:2016,modes:[{name:"3.4K Open Gate",w:28.17,h:18.13,res:"3424×2202"},{name:"4K UHD",w:23.76,h:13.37,res:"3840×2160"},{name:"3K S35",w:23.76,h:17.82,res:"3072×2304"},{name:"2.8K S35",w:23.76,h:13.37,res:"2880×1620"}]},
+    {model:"ALEXA LF",       year:2018,modes:[{name:"LF Open Gate 4.5K",w:36.70,h:25.54,res:"4448×3096"},{name:"LF 16:9 4.5K",w:31.68,h:17.82,res:"4448×2502"},{name:"LF 2.39:1",w:36.70,h:15.35,res:"4448×1856"},{name:"S35 4:3 3K",w:23.76,h:17.82,res:"3072×2304"},{name:"S35 4K UHD",w:23.76,h:13.37,res:"3840×2160"}]},
+    {model:"ALEXA Mini LF",  year:2019,modes:[{name:"LF Open Gate 4.5K",w:36.70,h:25.54,res:"4448×3096"},{name:"LF 16:9",w:31.68,h:17.82,res:"4448×2502"},{name:"LF 2.39:1",w:36.70,h:15.35,res:"4448×1856"},{name:"S35 4:3 3K",w:23.76,h:17.82,res:"3072×2304"},{name:"S35 4K UHD",w:23.76,h:13.37,res:"3840×2160"}]},
+    {model:"ALEXA 35",       year:2022,modes:[{name:"4.6K Open Gate",w:27.99,h:19.22,res:"4608×3164"},{name:"4.6K 16:9",w:26.67,h:14.17,res:"4608×2592"},{name:"4K S35 4:3",w:23.76,h:17.82,res:"4096×3072"},{name:"4K S35 16:9",w:23.76,h:13.37,res:"4096×2304"},{name:"4K UHD",w:23.76,h:13.37,res:"3840×2160"},{name:"2K S35",w:23.76,h:13.37,res:"2048×1152"}]},
+  ],
+  Sony:[
+    {model:"VENICE 2",year:2022,modes:[{name:"FF 8.6K Open Gate",w:35.9,h:24.0,res:"8640×5760"},{name:"FF 8.6K 17:9",w:35.9,h:19.0,res:"8640×4592"},{name:"S35 4:3 5.8K",w:24.0,h:18.0,res:"5784×4320"},{name:"S35 6K 17:9",w:27.98,h:14.80,res:"6048×3192"},{name:"4K 17:9",w:24.0,h:12.68,res:"4096×2160"}]},
+    {model:"VENICE",  year:2017,modes:[{name:"FF 6K Open Gate",w:36.0,h:24.0,res:"6048×4032"},{name:"FF 6K 17:9",w:36.0,h:19.0,res:"6048×3192"},{name:"S35 4:3",w:24.0,h:18.0,res:"4096×3072"},{name:"S35 17:9",w:24.0,h:12.68,res:"4096×2160"}]},
+    {model:"BURANO",  year:2023,modes:[{name:"FF 8.6K Open Gate",w:35.9,h:24.0,res:"8640×5760"},{name:"FF 8.6K 17:9",w:35.9,h:19.0,res:"8640×4592"},{name:"S35 4K 17:9",w:23.4,h:13.16,res:"4096×2304"}]},
+    {model:"FX9",     year:2019,modes:[{name:"FF 6K",w:35.6,h:23.8,res:"6048×4032"},{name:"S35 4K",w:23.6,h:13.3,res:"4096×2304"}]},
+    {model:"FX6",     year:2020,modes:[{name:"FF 4K",w:35.6,h:23.8,res:"4096×2160"},{name:"S35 4K",w:23.6,h:13.3,res:"4096×2160"}]},
+    {model:"FX3",     year:2021,modes:[{name:"FF 4K",w:35.6,h:23.8,res:"4096×2160"}]},
+  ],
+  RED:[
+    {model:"V-RAPTOR 8K VV",  year:2022,modes:[{name:"8K FF 17:9",w:40.96,h:21.60,res:"8192×4320"},{name:"6K S35",w:29.90,h:15.77,res:"6144×3240"},{name:"5.1K 2.4:1",w:29.90,h:12.46,res:"5120×2140"},{name:"4K S35",w:19.89,h:10.50,res:"4096×2160"}]},
+    {model:"V-RAPTOR [X] 8K", year:2023,modes:[{name:"8K FF 17:9",w:40.96,h:21.60,res:"8192×4320"},{name:"6K S35",w:29.90,h:15.77,res:"6144×3240"},{name:"4K S35",w:19.89,h:10.50,res:"4096×2160"}]},
+    {model:"KOMODO 6K",        year:2020,modes:[{name:"6K S35 17:9",w:27.03,h:14.25,res:"6144×3240"},{name:"4K S35",w:18.02,h:9.51,res:"4096×2160"}]},
+    {model:"KOMODO-X 6K",      year:2023,modes:[{name:"6K S35",w:27.03,h:14.25,res:"6144×3240"},{name:"4K S35",w:18.02,h:9.51,res:"4096×2160"}]},
+    {model:"MONSTRO 8K VV",    year:2018,modes:[{name:"8K FF 17:9",w:40.96,h:21.60,res:"8192×4320"},{name:"6K S35",w:29.90,h:15.77,res:"6144×3240"},{name:"5K S35",w:24.92,h:13.14,res:"5120×2700"}]},
+    {model:"HELIUM 8K S35",    year:2017,modes:[{name:"8K S35",w:29.90,h:15.77,res:"8192×4320"},{name:"6K S35",w:29.90,h:15.77,res:"6144×3240"},{name:"4K 2:1",w:29.90,h:14.95,res:"4096×2048"}]},
+    {model:"GEMINI 5K S35",    year:2018,modes:[{name:"5K S35",w:30.72,h:18.00,res:"5120×3000"},{name:"4K S35",w:30.72,h:18.00,res:"4096×2400"}]},
+  ],
+};
+
+const LENSES = {
+  "ARRI/Zeiss":[
+    {name:"Master Prime",      type:"Prime",      format:"S35",   focals:[12,14,16,18,21,25,27,32,35,40,50,65,75,100,135,150]},
+    {name:"Ultra Prime",       type:"Prime",      format:"S35",   focals:[8,10,12,14,16,20,24,28,32,40,50,65,85,100,135,180]},
+    {name:"Signature Prime",   type:"Prime",      format:"LF",    focals:[12,15,18,21,25,29,35,40,47,58,75,95,125,150,200,280]},
+    {name:"Sig. Zoom 16-32",   type:"Zoom",       format:"LF",    focals:[16,18,20,22,24,26,28,30,32]},
+    {name:"Sig. Zoom 45-135",  type:"Zoom",       format:"LF",    focals:[45,50,60,70,80,90,100,110,120,135]},
+    {name:"Master Zoom 16-110",type:"Zoom",       format:"S35",   focals:[16,18,21,24,28,32,35,40,50,65,75,85,100,110]},
+  ],
+  "Cooke":[
+    {name:"S4/i",              type:"Prime",      format:"S35",   focals:[12,14,16,18,21,25,27,32,35,40,50,65,75,100,135,150,180]},
+    {name:"S7/i",              type:"Prime",      format:"LF/FF", focals:[18,25,32,40,50,65,75,100,135]},
+    {name:"miniS4/i",          type:"Prime",      format:"S35",   focals:[18,21,25,32,40,50,65,75,100,135]},
+    {name:"Panchro/i Classic", type:"Prime",      format:"S35",   focals:[18,25,32,50,75,100]},
+    {name:"Anamorphic/i SF",   type:"Anamorphic", format:"S35",   focals:[32,40,50,65,75,100,135,180]},
+  ],
+  "Zeiss":[
+    {name:"Supreme Prime",     type:"Prime",      format:"LF/FF", focals:[18,21,25,29,35,40,50,65,85,100,135,150,200]},
+    {name:"Supreme Radiance",  type:"Prime",      format:"LF/FF", focals:[18,21,25,29,35,40,50,65,85,100,135,150,200]},
+    {name:"CP.3",              type:"Prime",      format:"S35",   focals:[15,18,21,25,28,35,50,85,100,135]},
+  ],
+  "Leica":[
+    {name:"Summicron-C",       type:"Prime",      format:"S35",   focals:[18,21,25,29,35,40,50,75,100,135]},
+    {name:"Thalia",            type:"Prime",      format:"LF",    focals:[24,30,35,45,55,70,90,120,180]},
+  ],
+  "Angénieux":[
+    {name:"Optimo 15-40",      type:"Zoom",       format:"S35",   focals:[15,17,20,24,28,32,35,40]},
+    {name:"Optimo 24-290",     type:"Zoom",       format:"S35",   focals:[24,35,50,65,75,100,135,180,240,290]},
+    {name:"EZ-1 30-90",        type:"Zoom",       format:"LF",    focals:[30,35,40,50,60,70,80,90]},
+    {name:"EZ-2 22-60",        type:"Zoom",       format:"LF",    focals:[22,25,30,35,40,45,50,55,60]},
+  ],
+  "Fujinon":[
+    {name:"Premista 19-45",    type:"Zoom",       format:"LF",    focals:[19,22,25,28,32,35,40,45]},
+    {name:"Premista 28-100",   type:"Zoom",       format:"LF",    focals:[28,32,35,40,50,60,75,85,100]},
+    {name:"Premista 80-250",   type:"Zoom",       format:"LF",    focals:[80,100,120,150,180,200,250]},
+    {name:"Cabrio 14-35",      type:"Zoom",       format:"S35",   focals:[14,16,18,21,24,28,35]},
+    {name:"Cabrio 19-90",      type:"Zoom",       format:"S35",   focals:[19,24,28,35,40,50,60,75,90]},
+  ],
+  "Panavision":[
+    {name:"Primo Classic",     type:"Prime",      format:"S35",   focals:[14.5,17.5,21,24,27,29,35,40,50,55,65,75,85,100,125,150]},
+    {name:"Primo Artiste",     type:"Prime",      format:"LF",    focals:[24,29,35,40,50,65,80,100,125,150]},
+    {name:"Anamorphic E",      type:"Anamorphic", format:"S35",   focals:[28,35,40,50,60,75,85,100,125,150]},
+    {name:"Zoom 24-275",       type:"Zoom",       format:"S35",   focals:[24,35,50,75,100,135,180,240,275]},
+  ],
+  "Canon":[
+    {name:"Sumire Prime",      type:"Prime",      format:"FF",    focals:[14,20,24,35,50,85,135]},
+    {name:"CN-E Prime",        type:"Prime",      format:"S35",   focals:[14,24,35,50,85,135]},
+    {name:"CN7x17 Cine-Servo", type:"Zoom",       format:"S35",   focals:[17,20,24,35,50,75,120]},
+  ],
+  "Sigma":[
+    {name:"Cine FF High Speed",type:"Prime",      format:"FF",    focals:[14,20,24,35,40,50,85,105]},
+    {name:"Cine S35",          type:"Prime",      format:"S35",   focals:[18,20,24,35,40,50,85,105]},
+    {name:"Cine Zoom 18-35",   type:"Zoom",       format:"S35",   focals:[18,20,22,24,28,35]},
+    {name:"Cine Zoom 50-100",  type:"Zoom",       format:"S35",   focals:[50,60,70,85,100]},
+  ],
+  "Atlas":[
+    {name:"Orion Ana. 2x",     type:"Anamorphic", format:"S35",   focals:[32,40,50,65,80]},
+    {name:"Mercury Ana. 1.5x", type:"Anamorphic", format:"LF",    focals:[24,32,40,50,65]},
+  ],
+};
+
+const ASPECT_RATIOS=[
+  {label:"1.33:1",name:"Academy",     value:1.333},
+  {label:"1.43:1",name:"IMAX 15p",    value:1.43 },
+  {label:"1.78:1",name:"16:9",        value:1.778},
+  {label:"1.85:1",name:"Flat",        value:1.85 },
+  {label:"1.90:1",name:"IMAX Digital",value:1.90 },
+  {label:"2.00:1",name:"Univisium",   value:2.0  },
+  {label:"2.20:1",name:"70mm",        value:2.2  },
+  {label:"2.35:1",name:"Scope",       value:2.35 },
+  {label:"2.39:1",name:"Anamorphic",  value:2.39 },
+  {label:"2.76:1",name:"Ultra Pan.",  value:2.76 },
+];
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+const S = {
+  brand:"ARRI", camIdx:0, modeIdx:0,
+  lensCategory:"ARRI/Zeiss", seriesIdx:0, focalIdx:0,
+  arIdx:3, phoneFOV:65, fovSource:"auto",
+  facingMode:"environment", panelOpen:false,
+  overlays:{frame:true,frameLabel:true,safe:true,grid:false,cross:true,info:true,horizon:false},
+};
+
+const getCam    = () => CAMERAS[S.brand][S.camIdx];
+const getMode   = () => getCam().modes[S.modeIdx];
+const getSeries = () => LENSES[S.lensCategory][S.seriesIdx];
+const getFocal  = () => getSeries().focals[S.focalIdx];
+const getAR     = () => ASPECT_RATIOS[S.arIdx];
+const getHFOV   = () => 2 * Math.atan(getMode().w / (2 * getFocal())) * (180 / Math.PI);
+
+// ─── AUTO FOV DETECTION ───────────────────────────────────────────────────────
+function detectFOV(stream) {
+  const track = stream.getVideoTracks()[0];
+  if (!track) return;
+  const label = (track.label||'').toLowerCase();
+  const ua = navigator.userAgent;
+  let v = null;
+
+  if (/iphone|ipad/i.test(ua)) {
+    if (label.includes('ultra wide')||label.includes('ultra-wide')) v=100;
+    else if (label.includes('telephoto')||label.includes('tele'))   v=48;
+    else if (label.includes('back')||label.includes('rear'))        v=65;
+    else if (label.includes('front')||label.includes('facetime'))   v=62;
+  }
+  if (!v && track.getCapabilities) {
+    try {
+      const c = track.getCapabilities();
+      if (c.zoom) v = (c.zoom.min||1) <= 0.6 ? 98 : 68;
+    } catch(e){}
+  }
+  if (!v) v = /android/i.test(ua) ? 68 : 65;
+
+  S.phoneFOV = v;
+  S.fovSource = 'auto';
+  const sl = $('fovSlider'); if(sl) sl.value=v;
+  const fv = $('fovVal');    if(fv) fv.textContent=v+'°';
+  buildFovPresets(); updateFovStatus();
+}
+
+function updateFovStatus() {
+  const el=$('fovStatus'); if(!el) return;
+  const auto = S.fovSource!=='manual';
+  el.textContent = auto ? '⬤ AUTO  '+S.phoneFOV+'°' : '⬤ MANUAL  '+S.phoneFOV+'°';
+  el.style.color = auto ? '#34c759' : '#FF9500';
+}
+
+// ─── CAMERA STREAM ────────────────────────────────────────────────────────────
+const video  = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const ctx    = canvas.getContext('2d');
+const BAR_H  = 70;
+
+function resizeCanvas() {
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+async function startCamera() {
+  try {
+    if (video.srcObject) video.srcObject.getTracks().forEach(t=>t.stop());
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:S.facingMode, width:{ideal:1920}, height:{ideal:1080}}
+    });
+    video.srcObject = stream;
+    video.play();
+    detectFOV(stream);
+  } catch(e) { console.error('Camera:', e); }
+}
+
+function flipCamera() {
+  S.facingMode = S.facingMode==='environment'?'user':'environment';
+  startCamera();
+}
+
+// ─── DRAW ─────────────────────────────────────────────────────────────────────
+const OG = '#FF9500';
+
+function draw() {
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+
+  // Available area (above bottom bar)
+  const availH = H - BAR_H;
+  const ar = getAR();
+
+  // Frame: fills available area at correct AR
+  let fW=W, fH=fW/ar.value;
+  if (fH > availH) { fH=availH; fW=fH*ar.value; }
+  const fX=(W-fW)/2, fY=(availH-fH)/2;
+
+  // Video zoom
+  const cinemaFOV = getHFOV();
+  const pRad = S.phoneFOV*Math.PI/180;
+  const cRad = cinemaFOV*Math.PI/180;
+  const vZoom = Math.tan(pRad/2)/Math.tan(cRad/2);
+
+  // Black BG
+  ctx.fillStyle='#050505'; ctx.fillRect(0,0,W,H);
+
+  // Draw video (zoomed, clipped to frame)
+  if (video.readyState>=2) {
+    const nW=video.videoWidth||W, nH=video.videoHeight||H;
+    const cov = Math.max(W/nW, H/nH);
+    const tot = cov*vZoom;
+    const dW=nW*tot, dH=nH*tot;
+    const dX=(W-dW)/2, dY=(H-dH)/2;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(fX,fY,fW,fH); ctx.clip();
+    ctx.drawImage(video,dX,dY,dW,dH);
+    ctx.restore();
+  }
+
+  // Wide angle indicator (cinema FOV > phone FOV)
+  if (vZoom<1) {
+    ctx.save();
+    ctx.beginPath(); ctx.rect(fX,fY,fW,fH); ctx.clip();
+    ctx.fillStyle='rgba(255,149,0,0.03)'; ctx.fillRect(fX,fY,fW,fH);
+    const pW=fW*vZoom, pH=fH*vZoom;
+    const pX=fX+(fW-pW)/2, pY=fY+(fH-pH)/2;
+    ctx.setLineDash([5,5]); ctx.strokeStyle='rgba(255,149,0,0.3)'; ctx.lineWidth=1;
+    ctx.strokeRect(pX,pY,pW,pH); ctx.setLineDash([]);
+    ctx.font='bold 9px Courier New'; ctx.fillStyle='rgba(255,149,0,0.4)';
+    ctx.fillText('PHONE FOV  '+S.phoneFOV+'°', pX+6, pY-5);
+    ctx.restore();
+  }
+
+  // Letterbox mask
+  ctx.fillStyle='rgba(0,0,0,0.88)';
+  if(fY>0){ ctx.fillRect(0,0,W,fY); ctx.fillRect(0,fY+fH,W,H-fY-fH); }
+  if(fX>0){ ctx.fillRect(0,fY,fX,fH); ctx.fillRect(fX+fW,fY,W-fX-fW,fH); }
+
+  // Frame line label
+  if (S.overlays.frameLabel&&fY>14) {
+    const lbl=ar.label+'  '+ar.name.toUpperCase();
+    const fs=Math.max(9,Math.min(11,fW/50));
+    ctx.font=`500 ${fs}px -apple-system,sans-serif`;
+    const tw=ctx.measureText(lbl).width;
+    const lx=fX+(fW-tw)/2, ly=fY-7;
+    ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(lx-5,ly-fs-1,tw+10,fs+5);
+    ctx.fillStyle=OG; ctx.fillText(lbl,lx,ly);
+  }
+
+  // Frame + corner brackets
+  if (S.overlays.frame) {
+    ctx.strokeStyle=OG; ctx.lineWidth=1.5;
+    ctx.strokeRect(fX,fY,fW,fH);
+    const b=Math.min(fW,fH)*0.055; ctx.lineWidth=3;
+    [[fX,fY,1,1],[fX+fW,fY,-1,1],[fX,fY+fH,1,-1],[fX+fW,fY+fH,-1,-1]].forEach(([x,y,dx,dy])=>{
+      ctx.beginPath(); ctx.moveTo(x,y+dy*b); ctx.lineTo(x,y); ctx.lineTo(x+dx*b,y); ctx.stroke();
+    });
+  }
+
+  // Safe areas
+  if (S.overlays.safe) {
+    ctx.setLineDash([4,4]); ctx.lineWidth=1;
+    ctx.strokeStyle='rgba(255,149,0,0.45)';
+    ctx.strokeRect(fX+fW*.05,fY+fH*.05,fW*.9,fH*.9);
+    ctx.strokeStyle='rgba(255,149,0,0.2)';
+    ctx.strokeRect(fX+fW*.1,fY+fH*.1,fW*.8,fH*.8);
+    ctx.setLineDash([]);
+  }
+
+  // Grid
+  if (S.overlays.grid) {
+    ctx.strokeStyle='rgba(255,255,255,0.16)'; ctx.lineWidth=1;
+    [1,2].forEach(i=>{
+      ctx.beginPath(); ctx.moveTo(fX+fW*i/3,fY); ctx.lineTo(fX+fW*i/3,fY+fH); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(fX,fY+fH*i/3); ctx.lineTo(fX+fW,fY+fH*i/3); ctx.stroke();
+    });
+  }
+
+  // Crosshair
+  if (S.overlays.cross) {
+    const cx=fX+fW/2,cy=fY+fH/2,r=Math.min(fW,fH)*0.038;
+    ctx.strokeStyle='rgba(255,149,0,0.8)'; ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(cx-r,cy);ctx.lineTo(cx-r*.25,cy);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cx+r*.25,cy);ctx.lineTo(cx+r,cy);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cx,cy-r);ctx.lineTo(cx,cy-r*.25);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cx,cy+r*.25);ctx.lineTo(cx,cy+r);ctx.stroke();
+    ctx.beginPath();ctx.arc(cx,cy,r*.1,0,Math.PI*2);ctx.stroke();
+  }
+
+  // Horizon
+  if (S.overlays.horizon) {
+    ctx.strokeStyle='rgba(255,200,80,0.4)'; ctx.lineWidth=1;
+    ctx.setLineDash([10,6]);
+    ctx.beginPath();ctx.moveTo(fX,fY+fH/2);ctx.lineTo(fX+fW,fY+fH/2);ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Info corners
+  if (S.overlays.info) {
+    const cam=getCam(),m=getMode(),f=getFocal();
+    const fs=Math.max(9,Math.min(11,fW/52)),pad=8;
+    ctx.font=`bold ${fs}px 'Courier New',monospace`; ctx.fillStyle=OG;
+    ctx.fillText(`${S.brand} ${cam.model}`,fX+pad,fY+fs+pad);
+    ctx.fillText(m.name,fX+pad,fY+fs*2.3+pad);
+    const rt=`${f}mm  ${cinemaFOV.toFixed(1)}\u00b0`;
+    ctx.fillText(rt,fX+fW-ctx.measureText(rt).width-pad,fY+fs+pad);
+    ctx.fillText(getSeries().name,fX+pad,fY+fH-pad);
+    const st=`${m.w}\u00d7${m.h}mm`;
+    ctx.fillText(st,fX+fW-ctx.measureText(st).width-pad,fY+fH-pad);
+  }
+
+  requestAnimationFrame(draw);
+}
+
+// ─── UI BUILDERS ─────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+
+function buildBrandChips(){$('brandChips').innerHTML=Object.keys(CAMERAS).map(b=>`<button class="chip${b===S.brand?' active':''}" onclick="setBrand('${b}')">${b}</button>`).join('');}
+function buildCamSel(){$('camSel').innerHTML=CAMERAS[S.brand].map((c,i)=>`<option value="${i}"${i===S.camIdx?' selected':''}>${c.model} (${c.year})</option>`).join('');}
+function buildModeSel(){$('modeSel').innerHTML=getCam().modes.map((m,i)=>`<option value="${i}"${i===S.modeIdx?' selected':''}>${m.name}  ${m.res}</option>`).join('');}
+function buildSensorMeta(){const m=getMode();$('sensorMeta').innerHTML=`Sensore <span>${m.w} \u00d7 ${m.h} mm</span>`;}
+function buildLensBrandChips(){$('lensBrandChips').innerHTML=Object.keys(LENSES).map(c=>`<button class="chip${c===S.lensCategory?' active':''}" style="font-size:10px" onclick="setLensCat('${c}')">${c}</button>`).join('');}
+function buildSeriesSel(){$('seriesSel').innerHTML=LENSES[S.lensCategory].map((s,i)=>`<option value="${i}"${i===S.seriesIdx?' selected':''}>[${s.type}] ${s.name}  (${s.format})</option>`).join('');}
+function buildFocalChips(){$('focalChips').innerHTML=getSeries().focals.map((f,i)=>`<button class="chip${i===S.focalIdx?' active':''}" onclick="setFocalIdx(${i})">${f}</button>`).join('');}
+function buildARChips(){$('arChips').innerHTML=ASPECT_RATIOS.map((a,i)=>`<button class="chip${i===S.arIdx?' active':''}" onclick="setAR(${i})">${a.label}</button>`).join('');}
+function buildLensMeta(){const m=getMode();$('lensMeta').innerHTML=`HFOV <span>${getHFOV().toFixed(1)}\u00b0</span>  &nbsp; Sensore <span>${m.w}\u00d7${m.h}mm</span>`;}
+
+function buildOverlayChips(){
+  const defs=[{k:'frame',l:'Frame'},{k:'frameLabel',l:'Frame Line'},{k:'safe',l:'Safe Area'},{k:'grid',l:'Grid 3\u00d73'},{k:'cross',l:'Crosshair'},{k:'info',l:'Info'},{k:'horizon',l:'Horizon'}];
+  $('overlayChips').innerHTML=defs.map(d=>`<button class="ov-chip${S.overlays[d.k]?' active':''}" onclick="toggleOv('${d.k}')">${d.l}</button>`).join('');
+}
+
+function buildFovPresets(){
+  const p=[['iPhone Wide',65],['iPhone UW',100],['iPhone 2x',48],['Android',68]];
+  $('fovPresets').innerHTML=p.map(([l,v])=>`<button class="chip${S.phoneFOV===v?' active':''}" style="font-size:10px" onclick="setFovPreset(${v})">${l}</button>`).join('');
+}
+
+function updateBar(){
+  const cam=getCam(),m=getMode(),s=getSeries(),f=getFocal(),ar=getAR();
+  $('barCamName').textContent=`${S.brand} ${cam.model}`;
+  $('barModeName').textContent=m.name.toUpperCase();
+  $('barSeriesName').textContent=s.name.toUpperCase();
+  $('navFocalNum').textContent=f;
+  $('barARLabel').textContent=ar.label;
+  $('btnPrev').disabled=S.focalIdx===0;
+  $('btnNext').disabled=S.focalIdx===s.focals.length-1;
+}
+
+function buildAll(){
+  buildBrandChips();buildCamSel();buildModeSel();buildSensorMeta();
+  buildLensBrandChips();buildSeriesSel();buildFocalChips();buildARChips();buildLensMeta();
+  buildOverlayChips();buildFovPresets();updateFovStatus();updateBar();
+}
+
+// ─── HANDLERS ─────────────────────────────────────────────────────────────────
+function switchTab(name,btn){
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  $('pane-'+name).classList.add('active'); btn.classList.add('active');
+}
+function togglePanel(e){if(e)e.stopPropagation();S.panelOpen=!S.panelOpen;$('panel').classList.toggle('open',S.panelOpen);}
+function setBrand(b){S.brand=b;S.camIdx=0;S.modeIdx=0;buildBrandChips();buildCamSel();buildModeSel();buildSensorMeta();buildLensMeta();updateBar();}
+function onCamChange(){S.camIdx=+$('camSel').value;S.modeIdx=0;buildModeSel();buildSensorMeta();buildLensMeta();updateBar();}
+function onModeChange(){S.modeIdx=+$('modeSel').value;buildSensorMeta();buildLensMeta();updateBar();}
+function setLensCat(c){S.lensCategory=c;S.seriesIdx=0;S.focalIdx=0;buildLensBrandChips();buildSeriesSel();buildFocalChips();buildLensMeta();updateBar();}
+function onSeriesChange(){S.seriesIdx=+$('seriesSel').value;S.focalIdx=0;buildFocalChips();buildLensMeta();updateBar();}
+function setFocalIdx(i){S.focalIdx=i;buildFocalChips();buildLensMeta();updateBar();}
+function prevFocalEv(e){e.stopPropagation();if(S.focalIdx>0){S.focalIdx--;buildFocalChips();buildLensMeta();updateBar();}}
+function nextFocalEv(e){e.stopPropagation();const s=getSeries();if(S.focalIdx<s.focals.length-1){S.focalIdx++;buildFocalChips();buildLensMeta();updateBar();}}
+function setAR(i){S.arIdx=i;buildARChips();updateBar();}
+function toggleOv(k){S.overlays[k]=!S.overlays[k];buildOverlayChips();}
+function onFovChange(){S.phoneFOV=+$('fovSlider').value;S.fovSource='manual';$('fovVal').textContent=S.phoneFOV+'°';buildFovPresets();updateFovStatus();}
+function setFovPreset(v){S.phoneFOV=v;S.fovSource='manual';$('fovSlider').value=v;$('fovVal').textContent=v+'°';buildFovPresets();updateFovStatus();}
+function resetFovAuto(){if(video.srcObject)detectFOV(video.srcObject);}
+
+// ─── SPLASH ───────────────────────────────────────────────────────────────────
+function startApp(){
+  document.getElementById('app').style.display='block';
+  buildAll(); startCamera(); draw();
+}
+
+(function initSplash(){
+  const splash=document.getElementById('splash');
+  setTimeout(()=>splash.classList.add('rotate'),   2000);
+  setTimeout(()=>splash.classList.add('fade'),      3100);
+  setTimeout(()=>{ splash.style.display='none'; startApp(); }, 3900);
+})();
+</script>
+</body>
+</html>
