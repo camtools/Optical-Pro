@@ -105,12 +105,19 @@ input[type=range]{accent-color:var(--orange);width:100%;}
 .fov-status{font-family:-apple-system,sans-serif;font-size:11px;font-weight:700;}
 
 /* GALLERY MODAL */
+.gall-tabs{display:flex;border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0;}
+.gall-tab{flex:1;background:transparent;border:none;border-bottom:2px solid transparent;color:rgba(255,255,255,.22);padding:10px 4px;font-family:-apple-system,sans-serif;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:color .12s;}
+.gall-tab.active{color:var(--orange);border-bottom-color:var(--orange);}
 #gallGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px 12px 16px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
 .gitem{position:relative;border-radius:8px;overflow:hidden;background:#111;border:1px solid rgba(255,255,255,.07);cursor:pointer;}
 .gitem img{width:100%;display:block;object-fit:cover;}
 .gitem-meta{position:absolute;top:0;left:0;right:0;padding:4px 6px;background:linear-gradient(rgba(0,0,0,.75),transparent);font-family:'Courier New',monospace;font-size:7px;color:rgba(255,255,255,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .gitem-del{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.65);border:none;color:rgba(255,255,255,.6);width:20px;height:20px;border-radius:50%;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
 .gitem-del:active{background:var(--red);color:#fff;}
+.vid-thumb-wrap{position:relative;width:100%;aspect-ratio:16/9;background:#0a0a0a;display:flex;align-items:center;justify-content:center;}
+.vid-thumb-wrap img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0;}
+.vid-play{position:absolute;width:28px;height:28px;border-radius:50%;background:rgba(255,149,0,.85);display:flex;align-items:center;justify-content:center;font-size:11px;color:#000;padding-left:2px;}
+.vid-dur{position:absolute;bottom:4px;right:5px;font-family:'Courier New',monospace;font-size:8px;color:rgba(255,255,255,.7);background:rgba(0,0,0,.6);padding:1px 4px;border-radius:4px;}
 .gall-empty{text-align:center;padding:32px 16px;color:rgba(255,255,255,.18);font-family:-apple-system,sans-serif;font-size:12px;}
 
 /* VIEWER (fullscreen) */
@@ -234,6 +241,10 @@ input[type=range]{accent-color:var(--orange);width:100%;}
         <button class="modal-x" onclick="closeGallery()">✕</button>
       </div>
     </div>
+    <div class="gall-tabs">
+      <button class="gall-tab active" id="gallTabFoto" onclick="switchGallTab('foto',this)">FOTO</button>
+      <button class="gall-tab"        id="gallTabVideo" onclick="switchGallTab('video',this)">VIDEO</button>
+    </div>
     <div id="gallGrid"></div>
   </div>
 
@@ -242,14 +253,15 @@ input[type=range]{accent-color:var(--orange);width:100%;}
     <div id="viewerHdr">
       <div id="viewerMeta"></div>
       <div id="viewerHdrBtns">
-        <button class="vhdr-btn" onclick="saveCurrentShot()">&#x2193; Salva</button>
-        <button class="vhdr-btn" onclick="closeViewer()">✕</button>
+        <button class="vhdr-btn" onclick="saveCurrentItem()">&#x2193; Salva</button>
+        <button class="vhdr-btn" onclick="closeViewer()">&#x2715;</button>
       </div>
     </div>
     <div id="viewerImgWrap"
       ontouchstart="onVTouchStart(event)"
       ontouchend="onVTouchEnd(event)">
-      <img id="viewerImg" src="" alt="">
+      <img id="viewerImg" src="" alt="" style="max-width:100%;max-height:100%;object-fit:contain;pointer-events:none;">
+      <video id="viewerVid" controls playsinline style="display:none;max-width:100%;max-height:100%;outline:none;background:#000;"></video>
       <button id="viewerPrevBtn" onclick="viewerStep(-1)">&#x2039;</button>
       <button id="viewerNextBtn" onclick="viewerStep(1)">&#x203A;</button>
       <div id="viewerCounter"></div>
@@ -499,88 +511,96 @@ async function startCamera(){
   }catch(e){console.error('Camera:',e);}
 }
 
+// ─── BLACK SCREEN RECOVERY ────────────────────────────────────────────────────
+function checkAndRestartCamera(){
+  if(!video.srcObject||!video.srcObject.active||video.paused||video.readyState<2){
+    setTimeout(startCamera,200);
+  }
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible')checkAndRestartCamera();
+});
+window.addEventListener('pageshow',()=>checkAndRestartCamera());
+window.addEventListener('focus',()=>setTimeout(checkAndRestartCamera,400));
+
 // ─── RECORDING ────────────────────────────────────────────────────────────────
 let mediaRecorder=null,recordedChunks=[],isRecording=false,recSecs=0,recTimer=null;
+const videos=[];
 
 function toggleRecording(){isRecording?stopRecording():startRecording();}
 
 async function startRecording(){
   try{
-    let stream, hasOverlays=false;
-
-    // Try canvas stream first (with overlays)
+    let stream,hasOverlays=false;
     if(canvas.captureStream){
-      try{
-        const cs=canvas.captureStream(30);
-        if(cs.getVideoTracks().length>0){stream=cs;hasOverlays=true;}
-      }catch(e){}
+      try{const cs=canvas.captureStream(30);if(cs.getVideoTracks().length>0){stream=cs;hasOverlays=true;}}catch(e){}
     }
-
-    // Fallback: raw video stream
-    if(!stream&&video.srcObject){
-      stream=new MediaStream(video.srcObject.getVideoTracks());
-    }
+    if(!stream&&video.srcObject)stream=new MediaStream(video.srcObject.getVideoTracks());
     if(!stream){alert('Registrazione non disponibile su questo dispositivo.');return;}
+    if(video.srcObject)video.srcObject.getAudioTracks().forEach(t=>{try{stream.addTrack(t);}catch(e){}});
 
-    // Add audio
-    if(video.srcObject){
-      video.srcObject.getAudioTracks().forEach(t=>{try{stream.addTrack(t);}catch(e){}});
-    }
-
-    // Find supported mime type
-    const mimes=[
-      'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
-      'video/mp4;codecs=avc1',
-      'video/mp4',
-      'video/webm;codecs=vp9,opus',
-      'video/webm;codecs=vp8,opus',
-      'video/webm',
-      ''
-    ];
-    const mime=mimes.find(m=>{
-      if(!m)return true;
-      try{return MediaRecorder.isTypeSupported(m);}catch(e){return false;}
-    })||'';
-
+    const mimes=['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm',''];
+    const mime=mimes.find(m=>{if(!m)return true;try{return MediaRecorder.isTypeSupported(m);}catch(e){return false;}})||'';
     recordedChunks=[];
-    const opts={videoBitsPerSecond:8000000};
-    if(mime)opts.mimeType=mime;
-
+    const opts={videoBitsPerSecond:8000000};if(mime)opts.mimeType=mime;
     mediaRecorder=new MediaRecorder(stream,opts);
     mediaRecorder.ondataavailable=e=>{if(e.data&&e.data.size>0)recordedChunks.push(e.data);};
     mediaRecorder.onstop=()=>{
       const finalMime=mediaRecorder.mimeType||'video/mp4';
       const ext=finalMime.includes('mp4')?'mp4':'webm';
       const blob=new Blob(recordedChunks,{type:finalMime});
-      const url=URL.createObjectURL(blob);
+      const blobUrl=URL.createObjectURL(blob);
       const now=new Date();
       const ts=`${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
-      const a=document.createElement('a');
-      a.href=url;a.download=`opticalpro_${S.brand}_${getFocal()}mm_${getAR().label.replace(':','x')}_${ts}.${ext}`;
-      a.click();
-      setTimeout(()=>URL.revokeObjectURL(url),5000);
+      const dur=recSecs;
+      const cam=getCam(),f=getFocal(),s=getSeries(),ar=getAR();
+      const entry={
+        blobUrl,blob,
+        meta:`${S.brand} ${cam.model} | ${s.name} ${f}mm | ${ar.label}`,
+        filename:`opticalpro_${S.brand}_${f}mm_${ar.label.replace(':','x')}_${ts}.${ext}`,
+        duration:dur,mimeType:finalMime
+      };
+      // Generate thumbnail async
+      generateVideoThumb(blobUrl).then(thumb=>{entry.thumbUrl=thumb;renderGalleryGrid();});
+      videos.push(entry);
+      updateGalleryThumb();
       isRecording=false;clearInterval(recTimer);recSecs=0;updateRecBtn();
     };
-    mediaRecorder.onerror=e=>{console.error('MediaRecorder error:',e);stopRecording();};
+    mediaRecorder.onerror=e=>{console.error('MediaRecorder:',e);stopRecording();};
     mediaRecorder.start(500);
     isRecording=true;recSecs=0;
     recTimer=setInterval(()=>{recSecs++;updateRecBtn();},1000);
     updateRecBtn();
-    if(!hasOverlays)console.warn('Recording without overlays (canvas capture not available)');
-  }catch(e){
-    console.error('startRecording:',e);
-    alert('Errore avvio registrazione: '+e.message);
-  }
+  }catch(e){console.error('startRecording:',e);alert('Errore: '+e.message);}
 }
 
 function stopRecording(){
-  if(mediaRecorder&&mediaRecorder.state!=='inactive'){mediaRecorder.stop();}
+  if(mediaRecorder&&mediaRecorder.state!=='inactive')mediaRecorder.stop();
   clearInterval(recTimer);
 }
+function updateRecBtn(){$('recBtn').classList.toggle('recording',isRecording);}
 
-function updateRecBtn(){
-  $('recBtn').classList.toggle('recording',isRecording);
+function generateVideoThumb(blobUrl){
+  return new Promise(resolve=>{
+    const v=document.createElement('video');
+    v.src=blobUrl;v.muted=true;v.playsInline=true;
+    v.addEventListener('loadeddata',()=>{
+      v.currentTime=0.1;
+      v.addEventListener('seeked',()=>{
+        try{
+          const c=document.createElement('canvas');c.width=160;c.height=90;
+          c.getContext('2d').drawImage(v,0,0,160,90);
+          resolve(c.toDataURL('image/jpeg',.7));
+        }catch(e){resolve(null);}
+      },{once:true});
+    },{once:true});
+    v.addEventListener('error',()=>resolve(null),{once:true});
+    setTimeout(()=>resolve(null),4000);
+  });
 }
+
+function fmtDur(s){return`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;}
+
 
 // ─── DRAW ─────────────────────────────────────────────────────────────────────
 const OG='#FF9500';
@@ -718,6 +738,13 @@ function draw(){
 
 // ─── SCREENSHOT ───────────────────────────────────────────────────────────────
 function captureScreenshot(){
+  // Disable info overlay temporarily so corners are clean in the frame
+  const wasInfo=S.overlays.info;
+  S.overlays.info=false;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{doCapture();S.overlays.info=wasInfo;}));
+}
+
+function doCapture(){
   const{fX,fY,fW,fH}=getFrameRect();
   const metaH=28,pFX=fX*DPR,pFY=fY*DPR,pFW=fW*DPR,pFH=fH*DPR,pMH=metaH*DPR;
   const tmp=document.createElement('canvas');
@@ -734,27 +761,25 @@ function captureScreenshot(){
   tc.fillText(left,Math.round(8*DPR),my);
   const cw=tc.measureText(center).width;tc.fillText(center,(Math.round(pFW)-cw)/2,my);
   const rw=tc.measureText(right).width;tc.fillText(right,Math.round(pFW)-rw-Math.round(8*DPR),my);
-
   const dataUrl=tmp.toDataURL('image/jpeg',.88);
   const now=new Date();
   const ts=`${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`;
   const shot={dataUrl,meta:`${S.brand} ${cam.model} | ${s.name} ${f}mm | ${ar.label}`,filename:`opticalpro_${S.brand}_${f}mm_${ar.label.replace(':','x')}_${ts}.jpg`};
-
-  if(screenshots.length>=MAX_SHOTS)screenshots.shift(); // FIFO limit
-  screenshots.push(shot);
-  saveScreenshots();
-  updateGalleryThumb();
-
+  if(screenshots.length>=MAX_SHOTS)screenshots.shift();
+  screenshots.push(shot);saveScreenshots();updateGalleryThumb();
   const fl=$('shotFlash');fl.classList.add('show');setTimeout(()=>fl.classList.remove('show'),150);
 }
 
 function updateGalleryThumb(){
   const cont=$('gallContainer'),thumb=$('gallThumb'),count=$('gallCount');
-  if(screenshots.length>0){
-    thumb.src=screenshots[screenshots.length-1].dataUrl;thumb.style.display='block';
-    cont.classList.remove('empty');
-    count.textContent=screenshots.length;count.style.display=screenshots.length>1?'block':'none';
-  }else{thumb.style.display='none';cont.classList.add('empty');count.style.display='none';}
+  const total=screenshots.length+videos.length;
+  // Show latest item: prefer video thumb, then last screenshot
+  const src=(videos.length>0&&videos[videos.length-1].thumbUrl)
+    ? videos[videos.length-1].thumbUrl
+    : (screenshots.length>0 ? screenshots[screenshots.length-1].dataUrl : null);
+  if(src){thumb.src=src;thumb.style.display='block';cont.classList.remove('empty');}
+  else{thumb.style.display='none';cont.classList.add('empty');}
+  count.textContent=total;count.style.display=total>0?'block':'none';
 }
 
 // ─── SAVE TO PHOTOS ───────────────────────────────────────────────────────────
@@ -775,52 +800,114 @@ async function saveToPhotos(dataUrl,filename){
 }
 
 // ─── GALLERY ──────────────────────────────────────────────────────────────────
-function openGallery(){renderGalleryGrid();$('gallBack').classList.add('open');$('gallModal').classList.add('open');}
+let gallTab='foto';
+
+function openGallery(){
+  renderGalleryGrid();
+  $('gallBack').classList.add('open');
+  $('gallModal').classList.add('open');
+}
 function closeGallery(){$('gallBack').classList.remove('open');$('gallModal').classList.remove('open');}
+
+function switchGallTab(tab,btn){
+  gallTab=tab;
+  document.querySelectorAll('.gall-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderGalleryGrid();
+}
 
 function renderGalleryGrid(){
   const grid=$('gallGrid');
-  $('gallTotal').textContent=screenshots.length?screenshots.length+' foto':'';
-  if(!screenshots.length){grid.innerHTML='<div class="gall-empty">Nessuno screenshot.<br>Usa ⊙ per catturare.</div>';return;}
-  grid.innerHTML=screenshots.map((s,i)=>`
-    <div class="gitem" onclick="openViewer(${i})">
-      <img src="${s.dataUrl}" loading="lazy">
-      <div class="gitem-meta">${s.meta}</div>
-      <button class="gitem-del" onclick="event.stopPropagation();deleteShot(${i})">&#x2715;</button>
-    </div>`).join('');
+  const isFoto=gallTab==='foto';
+  const items=isFoto?screenshots:videos;
+  $('gallTotal').textContent=items.length?(items.length+(isFoto?' foto':' video')):'';
+
+  if(!items.length){
+    grid.innerHTML=`<div class="gall-empty">Nessun ${isFoto?'screenshot':'video'}.<br>${isFoto?'Usa ⊙':'Usa ⏺'} per catturare.</div>`;
+    return;
+  }
+
+  if(isFoto){
+    grid.innerHTML=items.map((s,i)=>`
+      <div class="gitem" onclick="openViewer('foto',${i})">
+        <img src="${s.dataUrl}" loading="lazy">
+        <div class="gitem-meta">${s.meta}</div>
+        <button class="gitem-del" onclick="event.stopPropagation();deleteShot(${i})">&#x2715;</button>
+      </div>`).join('');
+  } else {
+    grid.innerHTML=items.map((v,i)=>`
+      <div class="gitem" onclick="openViewer('video',${i})">
+        <div class="vid-thumb-wrap">
+          ${v.thumbUrl?`<img src="${v.thumbUrl}">`:''}
+          <div class="vid-play">&#x25B6;</div>
+          <div class="vid-dur">${fmtDur(v.duration)}</div>
+        </div>
+        <div class="gitem-meta">${v.meta}</div>
+        <button class="gitem-del" onclick="event.stopPropagation();deleteVideo(${i})">&#x2715;</button>
+      </div>`).join('');
+  }
 }
 
 function deleteShot(i){screenshots.splice(i,1);saveScreenshots();updateGalleryThumb();renderGalleryGrid();}
+function deleteVideo(i){
+  URL.revokeObjectURL(videos[i].blobUrl);
+  videos.splice(i,1);
+  updateGalleryThumb();
+  renderGalleryGrid();
+}
 
 // ─── VIEWER ───────────────────────────────────────────────────────────────────
-let viewerIdx=0,vTouchX=0;
+let viewerType='foto',viewerIdx=0,vTouchX=0;
 
-function openViewer(i){
-  viewerIdx=i;renderViewer();
+function openViewer(type,i){
+  viewerType=type;viewerIdx=i;
+  renderViewer();
   closeGallery();
   $('viewerWrap').classList.add('open');
 }
-function closeViewer(){$('viewerWrap').classList.remove('open');}
+function closeViewer(){
+  // Pause video if playing
+  const vid=$('viewerVid');if(vid){vid.pause();vid.src='';}
+  $('viewerWrap').classList.remove('open');
+}
 function renderViewer(){
-  const s=screenshots[viewerIdx];
-  $('viewerImg').src=s.dataUrl;
-  $('viewerMeta').textContent=s.meta;
-  $('viewerCounter').textContent=`${viewerIdx+1} / ${screenshots.length}`;
+  const items=viewerType==='foto'?screenshots:videos;
+  const item=items[viewerIdx];
+  const img=$('viewerImg'),vid=$('viewerVid');
+  if(viewerType==='video'){
+    img.style.display='none';vid.style.display='block';
+    vid.src=item.blobUrl;
+  } else {
+    vid.pause();vid.src='';vid.style.display='none';
+    img.style.display='block';img.src=item.dataUrl;
+  }
+  $('viewerMeta').textContent=item.meta;
+  $('viewerCounter').textContent=`${viewerIdx+1} / ${items.length}`;
   $('viewerPrevBtn').disabled=viewerIdx===0;
-  $('viewerNextBtn').disabled=viewerIdx===screenshots.length-1;
+  $('viewerNextBtn').disabled=viewerIdx===items.length-1;
 }
 function viewerStep(d){
-  viewerIdx=Math.max(0,Math.min(screenshots.length-1,viewerIdx+d));
+  const items=viewerType==='foto'?screenshots:videos;
+  viewerIdx=Math.max(0,Math.min(items.length-1,viewerIdx+d));
   renderViewer();
 }
 function onVTouchStart(e){vTouchX=e.touches[0].clientX;}
-function onVTouchEnd(e){
-  const dx=e.changedTouches[0].clientX-vTouchX;
-  if(Math.abs(dx)>50)viewerStep(dx<0?1:-1);
-}
-function saveCurrentShot(){
-  const s=screenshots[viewerIdx];
-  saveToPhotos(s.dataUrl,s.filename);
+function onVTouchEnd(e){const dx=e.changedTouches[0].clientX-vTouchX;if(Math.abs(dx)>50)viewerStep(dx<0?1:-1);}
+
+async function saveCurrentItem(){
+  if(viewerType==='video'){
+    const v=videos[viewerIdx];
+    try{
+      if(navigator.share&&navigator.canShare){
+        const file=new File([v.blob],v.filename,{type:v.mimeType});
+        if(navigator.canShare({files:[file]})){await navigator.share({files:[file],title:'Optical Pro'});return;}
+      }
+    }catch(e){if(e.name==='AbortError')return;}
+    const a=document.createElement('a');a.href=v.blobUrl;a.download=v.filename;a.click();
+  } else {
+    const s=screenshots[viewerIdx];
+    saveToPhotos(s.dataUrl,s.filename);
+  }
 }
 
 // ─── SETTINGS MODAL ───────────────────────────────────────────────────────────
