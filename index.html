@@ -28,6 +28,23 @@ body{-webkit-tap-highlight-color:transparent;touch-action:none;}
 #shotFlash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:20;transition:opacity .12s ease;}
 #shotFlash.show{opacity:.55;}
 
+/* Shot + Rec row */
+#shotRecRow{display:flex;gap:8px;align-items:center;justify-content:center;}
+
+/* Screenshot button */
+#shotBtn{background:transparent;border:none;cursor:pointer;padding:0;-webkit-tap-highlight-color:transparent;width:36px;height:36px;display:flex;align-items:center;justify-content:center;}
+#shotRing{width:30px;height:30px;border-radius:50%;border:2.5px solid rgba(255,255,255,.5);position:relative;}
+#shotRing::after{content:'';position:absolute;inset:4px;border-radius:50%;background:rgba(255,255,255,.7);transition:background .1s;}
+#shotBtn:active #shotRing::after{background:#fff;}
+
+/* Record button */
+#recBtn{background:transparent;border:none;cursor:pointer;padding:0;-webkit-tap-highlight-color:transparent;width:36px;height:36px;display:flex;align-items:center;justify-content:center;}
+#recRing{width:30px;height:30px;border-radius:50%;border:2.5px solid rgba(255,59,48,.6);position:relative;transition:border-color .15s;}
+#recDot{position:absolute;inset:5px;border-radius:50%;background:#FF3B30;transition:border-radius .2s,inset .2s;}
+#recBtn.recording #recRing{border-color:#FF3B30;}
+#recBtn.recording #recDot{border-radius:3px;inset:7px;animation:recpulse 1s ease-in-out infinite;}
+@keyframes recpulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+
 /* ── RIGHT SIDEBAR ───────────────────────────────── */
 #sidebar{
   position:absolute;top:0;right:0;bottom:0;width:var(--sw);
@@ -173,12 +190,12 @@ input[type=range]{accent-color:var(--orange);width:100%;}
     <!-- Focal navigator -->
     <div id="sideFocal">
       <div id="sSeriesName">—</div>
-      <button class="s-arrow" id="btnPrev" onclick="prevFocalEv(event)">▲</button>
+      <button class="s-arrow" id="btnNext" onclick="nextFocalEv(event)">▲</button>
       <div id="sFocalWrap">
         <span id="sNavFocalNum">—</span>
         <span id="sNavFocalUnit">mm</span>
       </div>
-      <button class="s-arrow" id="btnNext" onclick="nextFocalEv(event)">▼</button>
+      <button class="s-arrow" id="btnPrev" onclick="prevFocalEv(event)">▼</button>
     </div>
 
     <div class="s-divider"></div>
@@ -190,8 +207,22 @@ input[type=range]{accent-color:var(--orange);width:100%;}
 
     <div class="s-divider"></div>
 
+    <!-- Screenshot + Rec buttons -->
+    <div class="s-section" style="padding:4px 8px">
+      <div id="shotRecRow">
+        <button id="shotBtn" onclick="captureScreenshot()" title="Screenshot">
+          <div id="shotRing"></div>
+        </button>
+        <button id="recBtn" onclick="toggleRecording()" title="Registra">
+          <div id="recRing"><div id="recDot"></div></div>
+        </button>
+      </div>
+    </div>
+
+    <div class="s-divider"></div>
+
     <!-- Gallery thumb -->
-    <div class="s-section">
+    <div class="s-section" style="padding:4px 8px">
       <div id="gallContainer" class="empty" onclick="openGallery()">
         <img id="gallThumb" src="" alt="">
         <div id="gallCount"></div>
@@ -369,6 +400,10 @@ const getHFOV=()=>2*Math.atan(getMode().w/(2*getFocal()))*(180/Math.PI);
 
 // Screenshots store
 const screenshots=[];
+
+// Recording state
+let mediaRecorder=null, recordedChunks=[], isRecording=false;
+let recSeconds=0, recTimerInterval=null;
 
 // ─── CANVAS / ORIENTATION ─────────────────────────────────────────────────────
 const app=document.getElementById('app');
@@ -553,6 +588,23 @@ function draw(){
     ctx.fillText(getSeries().name,fX+pad,fY+fH-pad);
     const st=`${m.w}\u00d7${m.h}mm`;
     ctx.fillText(st,fX+fW-ctx.measureText(st).width-pad,fY+fH-pad);
+  }
+
+  // REC indicator on canvas
+  if(isRecording){
+    const mins=Math.floor(recSeconds/60),secs=recSeconds%60;
+    const recTxt=`${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+    const pulse=Math.floor(Date.now()/500)%2===0;
+    const fs2=Math.max(9,Math.min(11,fW/52)),pad2=8;
+    ctx.font=`bold ${fs2}px 'Courier New',monospace`;
+    // Dot
+    ctx.beginPath();
+    ctx.arc(fX+fW/2-ctx.measureText(recTxt).width/2-10,fY+pad2+fs2/2,4,0,Math.PI*2);
+    ctx.fillStyle=pulse?'#FF3B30':'rgba(255,59,48,.3)';
+    ctx.fill();
+    // Time
+    ctx.fillStyle='#FF3B30';
+    ctx.fillText(recTxt,fX+fW/2-ctx.measureText(recTxt).width/2,fY+pad2+fs2);
   }
 
   requestAnimationFrame(draw);
