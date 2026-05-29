@@ -525,33 +525,136 @@ window.addEventListener('focus',()=>setTimeout(checkAndRestartCamera,400));
 
 // ─── RECORDING ────────────────────────────────────────────────────────────────
 let mediaRecorder=null,recordedChunks=[],isRecording=false,recSecs=0,recTimer=null;
+let recCanvas=null,recCtx=null,recRAF=null,recFX=0,recFY=0,recFW=0,recFH=0,recDPR2=1;
+const REC_META_H=24;
 const videos=[];
 
 function toggleRecording(){isRecording?stopRecording():startRecording();}
 
+function recDrawLoop(){
+  if(!isRecording||!recCtx)return;
+  const logW=canvas.width/DPR,logH=canvas.height/DPR;
+  const rW=recFW,rH=recFH;
+  recCtx.setTransform(recDPR2,0,0,recDPR2,0,0);
+  recCtx.clearRect(0,0,rW,rH+REC_META_H);
+
+  // Video (cropped to frame area, translated to 0,0)
+  if(video.readyState>=2){
+    const cinemaFOV=getHFOV();
+    const vZoom=Math.tan(S.phoneFOV*Math.PI/360)/Math.tan(cinemaFOV*Math.PI/360);
+    const nW=video.videoWidth||logW,nH=video.videoHeight||logH;
+    const cov=Math.max(logW/nW,logH/nH);
+    const dW=nW*cov*vZoom,dH=nH*cov*vZoom;
+    recCtx.save();
+    recCtx.beginPath();recCtx.rect(0,0,rW,rH);recCtx.clip();
+    recCtx.drawImage(video,(logW-dW)/2-recFX,(logH-dH)/2-recFY,dW,dH);
+    recCtx.restore();
+  }
+
+  // Overlays (same as main draw but at 0,0 coords, no info corners)
+  if(S.overlays.frame){
+    recCtx.strokeStyle=OG;recCtx.lineWidth=1.5;recCtx.strokeRect(0,0,rW,rH);
+    const b=Math.min(rW,rH)*.055;recCtx.lineWidth=3;
+    [[0,0,1,1],[rW,0,-1,1],[0,rH,1,-1],[rW,rH,-1,-1]].forEach(([x,y,dx,dy])=>{
+      recCtx.beginPath();recCtx.moveTo(x,y+dy*b);recCtx.lineTo(x,y);recCtx.lineTo(x+dx*b,y);recCtx.stroke();
+    });
+  }
+  if(S.overlays.frameLabel){
+    const ar=getAR(),lbl=ar.label+'  '+ar.name.toUpperCase();
+    const fs=Math.max(8,Math.min(10,rW/55));
+    recCtx.font=`500 ${fs}px -apple-system,sans-serif`;
+    const tw=recCtx.measureText(lbl).width,lx=(rW-tw)/2,ly=-5;
+    if(ly+fs>0){recCtx.fillStyle='rgba(0,0,0,.55)';recCtx.fillRect(lx-5,ly-fs-1,tw+10,fs+5);recCtx.fillStyle=OG;recCtx.fillText(lbl,lx,ly);}
+  }
+  if(S.overlays.safe){
+    recCtx.setLineDash([4,4]);recCtx.lineWidth=1;
+    recCtx.strokeStyle='rgba(255,149,0,.45)';recCtx.strokeRect(rW*.05,rH*.05,rW*.9,rH*.9);
+    recCtx.strokeStyle='rgba(255,149,0,.2)';recCtx.strokeRect(rW*.1,rH*.1,rW*.8,rH*.8);
+    recCtx.setLineDash([]);
+  }
+  if(S.overlays.grid){
+    recCtx.strokeStyle='rgba(255,255,255,.16)';recCtx.lineWidth=1;
+    [1,2].forEach(i=>{
+      recCtx.beginPath();recCtx.moveTo(rW*i/3,0);recCtx.lineTo(rW*i/3,rH);recCtx.stroke();
+      recCtx.beginPath();recCtx.moveTo(0,rH*i/3);recCtx.lineTo(rW,rH*i/3);recCtx.stroke();
+    });
+  }
+  if(S.overlays.cross){
+    const cx=rW/2,cy=rH/2,r=Math.min(rW,rH)*.038;
+    recCtx.strokeStyle='rgba(255,149,0,.85)';recCtx.lineWidth=1.5;
+    recCtx.beginPath();recCtx.moveTo(cx-r,cy);recCtx.lineTo(cx-r*.26,cy);recCtx.stroke();
+    recCtx.beginPath();recCtx.moveTo(cx+r*.26,cy);recCtx.lineTo(cx+r,cy);recCtx.stroke();
+    recCtx.beginPath();recCtx.moveTo(cx,cy-r);recCtx.lineTo(cx,cy-r*.26);recCtx.stroke();
+    recCtx.beginPath();recCtx.moveTo(cx,cy+r*.26);recCtx.lineTo(cx,cy+r);recCtx.stroke();
+    recCtx.beginPath();recCtx.arc(cx,cy,r*.1,0,Math.PI*2);recCtx.stroke();
+  }
+  if(S.overlays.horizon){
+    recCtx.strokeStyle='rgba(255,200,80,.4)';recCtx.lineWidth=1;recCtx.setLineDash([10,6]);
+    recCtx.beginPath();recCtx.moveTo(0,rH/2);recCtx.lineTo(rW,rH/2);recCtx.stroke();
+    recCtx.setLineDash([]);
+  }
+
+  // Metadata bar with live clock
+  const now=new Date();
+  const dateStr=`${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getFullYear()).slice(-2)}  ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+  recCtx.fillStyle='rgba(0,0,0,.9)';recCtx.fillRect(0,rH,rW,REC_META_H);
+  const fs2=Math.max(8,Math.min(10,rW/80));
+  recCtx.font=`bold ${fs2}px Courier New`;recCtx.fillStyle=OG;recCtx.textBaseline='middle';
+  const my=rH+REC_META_H/2;
+  const cam=getCam(),m=getMode(),s=getSeries(),f=getFocal(),ar=getAR(),cinemaFOV=getHFOV();
+  const ml=`${S.brand} ${cam.model}  ${m.name}`;
+  const mc=`${s.name}  ${f}mm  ${cinemaFOV.toFixed(1)}\u00b0`;
+  const mr=`${ar.label}  ${dateStr}`;
+  recCtx.fillText(ml,8,my);
+  const cw=recCtx.measureText(mc).width;recCtx.fillText(mc,(rW-cw)/2,my);
+  const rw2=recCtx.measureText(mr).width;recCtx.fillText(mr,rW-rw2-8,my);
+
+  // REC dot
+  const pulse=Math.floor(Date.now()/500)%2===0;
+  recCtx.beginPath();recCtx.arc(rW-8,8,4,0,Math.PI*2);
+  recCtx.fillStyle=pulse?'#FF3B30':'rgba(255,59,48,.3)';recCtx.fill();
+
+  recRAF=requestAnimationFrame(recDrawLoop);
+}
+
 async function startRecording(){
   try{
-    let stream,hasOverlays=false;
-    if(canvas.captureStream){
-      try{const cs=canvas.captureStream(30);if(cs.getVideoTracks().length>0){stream=cs;hasOverlays=true;}}catch(e){}
+    // Create recording canvas sized to frame only (no sidebar, no letterbox)
+    const{fX,fY,fW,fH}=getFrameRect();
+    recFX=fX;recFY=fY;recFW=fW;recFH=fH;
+    recDPR2=Math.min(DPR,2);
+    recCanvas=document.createElement('canvas');
+    recCanvas.width=Math.round(fW*recDPR2);
+    recCanvas.height=Math.round((fH+REC_META_H)*recDPR2);
+    recCtx=recCanvas.getContext('2d');
+
+    // Start render loop before captureStream
+    isRecording=true;recSecs=0;
+    recRAF=requestAnimationFrame(recDrawLoop);
+
+    // Capture from recording canvas
+    let stream=null;
+    if(recCanvas.captureStream){
+      try{stream=recCanvas.captureStream(30);}catch(e){}
     }
     if(!stream&&video.srcObject)stream=new MediaStream(video.srcObject.getVideoTracks());
-    if(!stream){alert('Registrazione non disponibile su questo dispositivo.');return;}
+    if(!stream){alert('Registrazione non disponibile.');isRecording=false;cancelAnimationFrame(recRAF);return;}
     if(video.srcObject)video.srcObject.getAudioTracks().forEach(t=>{try{stream.addTrack(t);}catch(e){}});
 
     const mimes=['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm',''];
-    const mime=mimes.find(m=>{if(!m)return true;try{return MediaRecorder.isTypeSupported(m);}catch(e){return false;}})||'';
+    const mime=mimes.find(m2=>{if(!m2)return true;try{return MediaRecorder.isTypeSupported(m2);}catch(e){return false;}})||'';
     recordedChunks=[];
     const opts={videoBitsPerSecond:8000000};if(mime)opts.mimeType=mime;
     mediaRecorder=new MediaRecorder(stream,opts);
     mediaRecorder.ondataavailable=e=>{if(e.data&&e.data.size>0)recordedChunks.push(e.data);};
     mediaRecorder.onstop=()=>{
+      cancelAnimationFrame(recRAF);recCtx=null;recCanvas=null;
       const finalMime=mediaRecorder.mimeType||'video/mp4';
       const ext=finalMime.includes('mp4')?'mp4':'webm';
       const blob=new Blob(recordedChunks,{type:finalMime});
       const blobUrl=URL.createObjectURL(blob);
-      const now=new Date();
-      const ts=`${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
+      const now2=new Date();
+      const ts=`${now2.getFullYear()}${String(now2.getMonth()+1).padStart(2,'0')}${String(now2.getDate()).padStart(2,'0')}_${String(now2.getHours()).padStart(2,'0')}${String(now2.getMinutes()).padStart(2,'0')}`;
       const dur=recSecs;
       const cam=getCam(),f=getFocal(),s=getSeries(),ar=getAR();
       const entry={
@@ -560,7 +663,6 @@ async function startRecording(){
         filename:`opticalpro_${S.brand}_${f}mm_${ar.label.replace(':','x')}_${ts}.${ext}`,
         duration:dur,mimeType:finalMime
       };
-      // Generate thumbnail async
       generateVideoThumb(blobUrl).then(thumb=>{entry.thumbUrl=thumb;renderGalleryGrid();});
       videos.push(entry);
       updateGalleryThumb();
@@ -568,10 +670,13 @@ async function startRecording(){
     };
     mediaRecorder.onerror=e=>{console.error('MediaRecorder:',e);stopRecording();};
     mediaRecorder.start(500);
-    isRecording=true;recSecs=0;
     recTimer=setInterval(()=>{recSecs++;updateRecBtn();},1000);
     updateRecBtn();
-  }catch(e){console.error('startRecording:',e);alert('Errore: '+e.message);}
+  }catch(e){
+    console.error('startRecording:',e);
+    isRecording=false;cancelAnimationFrame(recRAF);
+    alert('Errore: '+e.message);
+  }
 }
 
 function stopRecording(){
@@ -757,12 +862,13 @@ function doCapture(){
   const my=Math.round(pFH)+Math.round(pMH)/2;
   const left=`${S.brand} ${cam.model}  ${m.name}`;
   const center=`${s.name}  ${f}mm  ${getHFOV().toFixed(1)}\u00b0`;
-  const right=`${ar.label}  ${m.w}\u00d7${m.h}mm`;
+  const now=new Date();
+  const dateStr=`${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getFullYear()).slice(-2)}  ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  const right=`${ar.label}  ${dateStr}`;
   tc.fillText(left,Math.round(8*DPR),my);
   const cw=tc.measureText(center).width;tc.fillText(center,(Math.round(pFW)-cw)/2,my);
   const rw=tc.measureText(right).width;tc.fillText(right,Math.round(pFW)-rw-Math.round(8*DPR),my);
   const dataUrl=tmp.toDataURL('image/jpeg',.88);
-  const now=new Date();
   const ts=`${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`;
   const shot={dataUrl,meta:`${S.brand} ${cam.model} | ${s.name} ${f}mm | ${ar.label}`,filename:`opticalpro_${S.brand}_${f}mm_${ar.label.replace(':','x')}_${ts}.jpg`};
   if(screenshots.length>=MAX_SHOTS)screenshots.shift();
