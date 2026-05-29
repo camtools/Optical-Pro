@@ -8,11 +8,11 @@
 <title>Optical Pro</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-:root{--orange:#FF9500;--r:16px;--sw:88px;}
+:root{--orange:#FF9500;--red:#FF3B30;--r:16px;--sw:88px;}
 html,body{background:#000;overflow:hidden;height:100%;width:100%;}
 body{-webkit-tap-highlight-color:transparent;touch-action:none;}
 
-/* ── SPLASH ─────────────────────────────────────── */
+/* SPLASH */
 #splash{position:fixed;inset:0;background:#000;display:flex;align-items:center;justify-content:center;z-index:999;transition:transform .9s cubic-bezier(.4,0,.2,1),opacity .65s ease;}
 #splash.rotate{transform:rotate(90deg) scale(.92);}
 #splash.fade{opacity:0;pointer-events:none;}
@@ -21,102 +21,66 @@ body{-webkit-tap-highlight-color:transparent;touch-action:none;}
 #splashPro{font-family:-apple-system,'Helvetica Neue',sans-serif;font-weight:100;font-size:clamp(13px,3.5vw,22px);letter-spacing:14px;color:var(--orange);margin-top:10px;padding-left:14px;}
 #splashBar{width:36px;height:1px;background:var(--orange);margin:18px auto 0;opacity:.5;}
 
-/* ── APP ────────────────────────────────────────── */
+/* APP */
 #app{position:fixed;top:0;left:0;width:100vw;height:100vh;overflow:hidden;}
 #video{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;}
 #canvas{position:absolute;top:0;left:0;display:block;}
-#shotFlash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:20;transition:opacity .12s ease;}
-#shotFlash.show{opacity:.55;}
+#shotFlash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:20;transition:opacity .1s ease;}
+#shotFlash.show{opacity:.5;}
 
-/* Shot + Rec row */
-#shotRecRow{display:flex;gap:8px;align-items:center;justify-content:center;}
+/* SIDEBAR */
+#sidebar{position:absolute;top:0;right:0;bottom:0;width:var(--sw);background:rgba(7,7,7,.97);border-left:1px solid rgba(255,149,0,.18);border-radius:var(--r) 0 0 var(--r);display:flex;flex-direction:column;align-items:center;padding:10px 0 10px;z-index:10;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);}
+.s-sec{width:100%;display:flex;flex-direction:column;align-items:center;padding:4px 8px;}
+.s-div{width:44px;height:1px;background:rgba(255,255,255,.06);margin:3px 0;flex-shrink:0;}
 
-/* Screenshot button */
-#shotBtn{background:transparent;border:none;cursor:pointer;padding:0;-webkit-tap-highlight-color:transparent;width:36px;height:36px;display:flex;align-items:center;justify-content:center;}
-#shotRing{width:30px;height:30px;border-radius:50%;border:2.5px solid rgba(255,255,255,.5);position:relative;}
-#shotRing::after{content:'';position:absolute;inset:4px;border-radius:50%;background:rgba(255,255,255,.7);transition:background .1s;}
-#shotBtn:active #shotRing::after{background:#fff;}
-
-/* Record button */
-#recBtn{background:transparent;border:none;cursor:pointer;padding:0;-webkit-tap-highlight-color:transparent;width:36px;height:36px;display:flex;align-items:center;justify-content:center;}
-#recRing{width:30px;height:30px;border-radius:50%;border:2.5px solid rgba(255,59,48,.6);position:relative;transition:border-color .15s;}
-#recDot{position:absolute;inset:5px;border-radius:50%;background:#FF3B30;transition:border-radius .2s,inset .2s;}
-#recBtn.recording #recRing{border-color:#FF3B30;}
-#recBtn.recording #recDot{border-radius:3px;inset:7px;animation:recpulse 1s ease-in-out infinite;}
-@keyframes recpulse{0%,100%{opacity:1;}50%{opacity:.35;}}
-
-/* ── RIGHT SIDEBAR ───────────────────────────────── */
-#sidebar{
-  position:absolute;top:0;right:0;bottom:0;width:var(--sw);
-  background:rgba(7,7,7,.97);
-  border-left:1px solid rgba(255,149,0,.18);
-  border-radius:var(--r) 0 0 var(--r);
-  display:flex;flex-direction:column;align-items:center;
-  padding:10px 0 12px;gap:0;z-index:10;
-  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-}
-
-/* Sidebar sections */
-.s-section{width:100%;display:flex;flex-direction:column;align-items:center;padding:6px 8px;}
-.s-divider{width:48px;height:1px;background:rgba(255,255,255,.06);margin:4px 0;}
-
-/* Camera info */
-#sCamName{font-family:'Courier New',monospace;font-size:10px;font-weight:bold;color:rgba(255,255,255,.65);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:72px;}
-#sModeName{font-family:'Courier New',monospace;font-size:8px;color:rgba(255,255,255,.25);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:72px;margin-top:2px;}
-
-/* Series */
-#sSeriesName{font-family:'Courier New',monospace;font-size:8px;letter-spacing:.3px;color:rgba(255,255,255,.28);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:72px;margin-bottom:2px;}
+/* Cam info */
+#sCamName{font-family:'Courier New',monospace;font-size:10px;font-weight:bold;color:rgba(255,255,255,.65);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:76px;}
+#sModeName{font-family:'Courier New',monospace;font-size:8px;color:rgba(255,255,255,.25);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:76px;margin-top:2px;}
 
 /* Focal nav */
-#sideFocal{width:100%;display:flex;flex-direction:column;align-items:center;flex:1;justify-content:center;padding:0 0 4px;}
-.s-arrow{background:transparent;border:none;color:var(--orange);font-size:26px;line-height:1;cursor:pointer;padding:2px 0;-webkit-tap-highlight-color:transparent;transition:opacity .1s,transform .1s;opacity:.8;width:100%;text-align:center;}
+#sideFocal{width:100%;display:flex;flex-direction:column;align-items:center;flex:1;justify-content:center;padding:8px 0;}
+#sSeriesName{font-family:'Courier New',monospace;font-size:8px;color:rgba(255,255,255,.28);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:76px;margin-bottom:4px;letter-spacing:.3px;}
+.s-arrow{background:transparent;border:none;color:var(--orange);font-size:28px;line-height:1;cursor:pointer;padding:6px 0;-webkit-tap-highlight-color:transparent;transition:opacity .1s,transform .1s;opacity:.8;width:100%;text-align:center;}
 .s-arrow:disabled{opacity:.15;cursor:default;}
 .s-arrow:active:not(:disabled){opacity:1;transform:scale(.82);}
-#sFocalWrap{display:flex;align-items:flex-end;justify-content:center;gap:1px;}
-#sNavFocalNum{font-family:'Courier New',monospace;font-size:24px;font-weight:bold;color:#fff;letter-spacing:-1px;line-height:1;}
+#sFocalWrap{display:flex;align-items:flex-end;justify-content:center;gap:1px;padding:4px 0;}
+#sNavFocalNum{font-family:'Courier New',monospace;font-size:26px;font-weight:bold;color:#fff;letter-spacing:-1px;line-height:1;}
 #sNavFocalUnit{font-family:'Courier New',monospace;font-size:10px;color:rgba(255,255,255,.3);margin-bottom:3px;}
 
-/* AR */
-#sARLabel{font-family:'Courier New',monospace;font-size:11px;font-weight:bold;color:var(--orange);}
+/* Shot + Rec */
+#shotRecRow{display:flex;gap:8px;align-items:center;justify-content:center;padding:4px 0;}
+#shotBtn,#recBtn{background:transparent;border:none;cursor:pointer;padding:0;-webkit-tap-highlight-color:transparent;width:34px;height:34px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+#shotRing{width:28px;height:28px;border-radius:50%;border:2.5px solid rgba(255,255,255,.5);position:relative;}
+#shotRing::after{content:'';position:absolute;inset:4px;border-radius:50%;background:rgba(255,255,255,.7);transition:background .1s;}
+#shotBtn:active #shotRing::after{background:#fff;}
+#recRing{width:28px;height:28px;border-radius:50%;border:2.5px solid rgba(255,59,48,.6);position:relative;transition:border-color .15s;}
+#recDot{position:absolute;inset:5px;border-radius:50%;background:var(--red);transition:border-radius .2s,inset .2s;}
+#recBtn.recording #recRing{border-color:var(--red);}
+#recBtn.recording #recDot{border-radius:3px;inset:7px;animation:recpulse 1s ease-in-out infinite;}
+@keyframes recpulse{0%,100%{opacity:1;}50%{opacity:.3;}}
 
 /* Gallery thumb */
-#gallContainer{
-  width:70px;height:44px;
-  border-radius:6px;overflow:hidden;
-  background:rgba(255,255,255,.05);
-  border:1px solid rgba(255,255,255,.08);
-  position:relative;cursor:pointer;
-  transition:border-color .15s;
-  display:flex;align-items:center;justify-content:center;
-  margin:4px 0;
-}
+#gallContainer{width:68px;height:42px;border-radius:6px;overflow:hidden;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);position:relative;cursor:pointer;transition:border-color .15s;display:flex;align-items:center;justify-content:center;margin:2px 0;}
+#gallContainer.empty::after{content:'🎞';font-size:14px;opacity:.2;}
 #gallContainer:active{border-color:var(--orange);}
-#gallContainer.empty::after{content:'📷';font-size:16px;opacity:.25;}
 #gallThumb{width:100%;height:100%;object-fit:cover;display:none;}
-#gallCount{
-  position:absolute;top:3px;right:3px;
-  background:var(--orange);color:#000;
-  font-family:-apple-system,sans-serif;
-  font-size:9px;font-weight:800;
-  padding:1px 4px;border-radius:8px;
-  display:none;
-}
+#gallCount{position:absolute;top:3px;right:3px;background:var(--orange);color:#000;font-family:-apple-system,sans-serif;font-size:9px;font-weight:800;padding:1px 4px;border-radius:8px;display:none;}
 
-/* Menu btn */
-#sMenuBtn{background:transparent;border:none;color:rgba(255,255,255,.3);font-size:20px;cursor:pointer;padding:4px;-webkit-tap-highlight-color:transparent;transition:color .15s;margin-top:auto;}
+/* Menu */
+#sMenuBtn{background:transparent;border:none;color:rgba(255,255,255,.3);font-size:20px;cursor:pointer;padding:4px;-webkit-tap-highlight-color:transparent;transition:color .15s;margin-top:2px;}
 #sMenuBtn:active{color:var(--orange);}
 
-/* ── MODALS SHARED ───────────────────────────────── */
+/* MODALS SHARED */
 .backdrop{position:absolute;inset:0;background:rgba(0,0,0,.65);z-index:50;opacity:0;pointer-events:none;transition:opacity .25s ease;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);}
 .backdrop.open{opacity:1;pointer-events:all;}
 .modal{position:absolute;top:50%;left:50%;transform:translate(-50%,-46%) scale(.96);width:90%;max-width:420px;max-height:74vh;background:rgba(8,8,8,.98);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);border-radius:var(--r);border:1px solid rgba(255,149,0,.14);overflow:hidden;display:flex;flex-direction:column;z-index:51;opacity:0;pointer-events:none;transition:opacity .25s ease,transform .25s ease;}
 .modal.open{opacity:1;pointer-events:all;transform:translate(-50%,-50%) scale(1);}
-.modal-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid rgba(255,255,255,.05);flex-shrink:0;}
-.modal-title{font-family:-apple-system,sans-serif;font-size:10px;font-weight:700;letter-spacing:2.5px;color:rgba(255,255,255,.3);text-transform:uppercase;}
-.modal-close{background:rgba(255,255,255,.07);border:none;color:rgba(255,255,255,.5);width:26px;height:26px;border-radius:50%;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .12s;}
-.modal-close:active{background:rgba(255,149,0,.25);color:var(--orange);}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid rgba(255,255,255,.05);flex-shrink:0;}
+.modal-ttl{font-family:-apple-system,sans-serif;font-size:10px;font-weight:700;letter-spacing:2.5px;color:rgba(255,255,255,.3);text-transform:uppercase;}
+.modal-x{background:rgba(255,255,255,.07);border:none;color:rgba(255,255,255,.5);width:26px;height:26px;border-radius:50%;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .12s;}
+.modal-x:active{background:rgba(255,149,0,.25);color:var(--orange);}
 
-/* ── SETTINGS MODAL ─────────────────────────────── */
+/* SETTINGS */
 .tabs{display:flex;border-bottom:1px solid rgba(255,255,255,.04);flex-shrink:0;}
 .tab-btn{flex:1;background:transparent;border:none;border-bottom:2px solid transparent;color:rgba(255,255,255,.18);padding:11px 4px;font-family:-apple-system,sans-serif;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:color .12s;}
 .tab-btn.active{color:var(--orange);border-bottom-color:var(--orange);}
@@ -140,16 +104,30 @@ input[type=range]{accent-color:var(--orange);width:100%;}
 .hint{font-family:-apple-system,sans-serif;color:rgba(255,255,255,.15);font-size:10px;line-height:1.7;margin-top:4px;}
 .fov-status{font-family:-apple-system,sans-serif;font-size:11px;font-weight:700;}
 
-/* ── GALLERY MODAL ───────────────────────────────── */
-#gallModal{max-height:80vh;}
-#gallGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px 14px 16px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
-.gitem{position:relative;border-radius:8px;overflow:hidden;background:#111;border:1px solid rgba(255,255,255,.07);aspect-ratio:16/9;cursor:pointer;}
-.gitem img{width:100%;height:100%;object-fit:cover;display:block;}
-.gitem-actions{position:absolute;bottom:0;left:0;right:0;display:flex;justify-content:space-between;padding:4px;background:linear-gradient(transparent,rgba(0,0,0,.8));}
-.gitem-meta{position:absolute;top:0;left:0;right:0;padding:3px 5px;background:linear-gradient(rgba(0,0,0,.7),transparent);font-family:'Courier New',monospace;font-size:7px;color:rgba(255,255,255,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.g-btn{background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:11px;padding:3px 7px;border-radius:5px;cursor:pointer;font-family:-apple-system,sans-serif;}
-.g-btn:active{background:var(--orange);color:#000;}
+/* GALLERY MODAL */
+#gallGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px 12px 16px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.gitem{position:relative;border-radius:8px;overflow:hidden;background:#111;border:1px solid rgba(255,255,255,.07);cursor:pointer;}
+.gitem img{width:100%;display:block;object-fit:cover;}
+.gitem-meta{position:absolute;top:0;left:0;right:0;padding:4px 6px;background:linear-gradient(rgba(0,0,0,.75),transparent);font-family:'Courier New',monospace;font-size:7px;color:rgba(255,255,255,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.gitem-del{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.65);border:none;color:rgba(255,255,255,.6);width:20px;height:20px;border-radius:50%;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.gitem-del:active{background:var(--red);color:#fff;}
 .gall-empty{text-align:center;padding:32px 16px;color:rgba(255,255,255,.18);font-family:-apple-system,sans-serif;font-size:12px;}
+
+/* VIEWER (fullscreen) */
+#viewerWrap{position:absolute;inset:0;background:#000;z-index:60;display:flex;flex-direction:column;opacity:0;pointer-events:none;transition:opacity .2s ease;}
+#viewerWrap.open{opacity:1;pointer-events:all;}
+#viewerHdr{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:linear-gradient(to bottom,rgba(0,0,0,.8),transparent);position:absolute;top:0;left:0;right:0;z-index:1;}
+#viewerMeta{font-family:'Courier New',monospace;font-size:10px;color:rgba(255,255,255,.5);}
+#viewerHdrBtns{display:flex;gap:10px;}
+.vhdr-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:#fff;padding:5px 12px;border-radius:20px;cursor:pointer;font-family:-apple-system,sans-serif;font-size:11px;font-weight:600;}
+.vhdr-btn:active{background:var(--orange);border-color:var(--orange);color:#000;}
+#viewerImgWrap{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;}
+#viewerImg{max-width:100%;max-height:100%;object-fit:contain;pointer-events:none;transition:transform .2s ease;}
+#viewerCounter{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font-family:-apple-system,sans-serif;font-size:11px;color:rgba(255,255,255,.4);background:rgba(0,0,0,.5);padding:3px 10px;border-radius:20px;}
+#viewerPrevBtn,#viewerNextBtn{position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:22px;width:36px;height:56px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;transition:opacity .1s;}
+#viewerPrevBtn{left:8px;}
+#viewerNextBtn{right:8px;}
+#viewerPrevBtn:disabled,#viewerNextBtn:disabled{opacity:.15;}
 </style>
 </head>
 <body>
@@ -169,74 +147,43 @@ input[type=range]{accent-color:var(--orange);width:100%;}
   <canvas id="canvas"></canvas>
   <div id="shotFlash"></div>
 
-  <!-- Right sidebar -->
+  <!-- SIDEBAR -->
   <div id="sidebar">
-
-    <!-- Menu -->
-    <div class="s-section">
-      <button id="sMenuBtn" onclick="openSettings()">≡</button>
-    </div>
-
-    <div class="s-divider"></div>
-
-    <!-- Camera info -->
-    <div class="s-section">
+    <div class="s-sec"><button id="sMenuBtn" onclick="openSettings()">≡</button></div>
+    <div class="s-div"></div>
+    <div class="s-sec">
       <div id="sCamName">—</div>
       <div id="sModeName">—</div>
     </div>
-
-    <div class="s-divider"></div>
-
-    <!-- Focal navigator -->
+    <div class="s-div"></div>
     <div id="sideFocal">
       <div id="sSeriesName">—</div>
       <button class="s-arrow" id="btnNext" onclick="nextFocalEv(event)">▲</button>
-      <div id="sFocalWrap">
-        <span id="sNavFocalNum">—</span>
-        <span id="sNavFocalUnit">mm</span>
-      </div>
+      <div id="sFocalWrap"><span id="sNavFocalNum">—</span><span id="sNavFocalUnit">mm</span></div>
       <button class="s-arrow" id="btnPrev" onclick="prevFocalEv(event)">▼</button>
     </div>
-
-    <div class="s-divider"></div>
-
-    <!-- AR -->
-    <div class="s-section">
-      <div id="sARLabel">—</div>
-    </div>
-
-    <div class="s-divider"></div>
-
-    <!-- Screenshot + Rec buttons -->
-    <div class="s-section" style="padding:4px 8px">
+    <div class="s-div"></div>
+    <div class="s-sec">
       <div id="shotRecRow">
-        <button id="shotBtn" onclick="captureScreenshot()" title="Screenshot">
-          <div id="shotRing"></div>
-        </button>
-        <button id="recBtn" onclick="toggleRecording()" title="Registra">
-          <div id="recRing"><div id="recDot"></div></div>
-        </button>
+        <button id="shotBtn" onclick="captureScreenshot()" title="Screenshot"><div id="shotRing"></div></button>
+        <button id="recBtn"  onclick="toggleRecording()"   title="Registra"><div id="recRing"><div id="recDot"></div></div></button>
       </div>
     </div>
-
-    <div class="s-divider"></div>
-
-    <!-- Gallery thumb -->
-    <div class="s-section" style="padding:4px 8px">
+    <div class="s-div"></div>
+    <div class="s-sec">
       <div id="gallContainer" class="empty" onclick="openGallery()">
         <img id="gallThumb" src="" alt="">
         <div id="gallCount"></div>
       </div>
     </div>
+  </div>
 
-  </div><!-- /sidebar -->
-
-  <!-- Settings backdrop + modal -->
-  <div class="backdrop" id="settBackdrop" onclick="closeSettings()"></div>
+  <!-- SETTINGS -->
+  <div class="backdrop" id="settBack" onclick="closeSettings()"></div>
   <div class="modal" id="settModal">
-    <div class="modal-header">
-      <span class="modal-title">IMPOSTAZIONI</span>
-      <button class="modal-close" onclick="closeSettings()">✕</button>
+    <div class="modal-hdr">
+      <span class="modal-ttl">IMPOSTAZIONI</span>
+      <button class="modal-x" onclick="closeSettings()">✕</button>
     </div>
     <div class="tabs">
       <button class="tab-btn active" onclick="switchTab('camera',this)">CAMERA</button>
@@ -277,17 +224,36 @@ input[type=range]{accent-color:var(--orange);width:100%;}
     </div>
   </div>
 
-  <!-- Gallery backdrop + modal -->
-  <div class="backdrop" id="gallBackdrop" onclick="closeGallery()"></div>
-  <div class="modal" id="gallModal">
-    <div class="modal-header">
-      <span class="modal-title">GALLERY</span>
+  <!-- GALLERY -->
+  <div class="backdrop" id="gallBack" onclick="closeGallery()"></div>
+  <div class="modal" id="gallModal" style="max-height:80vh">
+    <div class="modal-hdr">
+      <span class="modal-ttl">GALLERY</span>
       <div style="display:flex;gap:8px;align-items:center">
-        <span id="gallTotalLabel" style="font-family:'Courier New',monospace;font-size:10px;color:rgba(255,255,255,.25)"></span>
-        <button class="modal-close" onclick="closeGallery()">✕</button>
+        <span id="gallTotal" style="font-family:'Courier New',monospace;font-size:10px;color:rgba(255,255,255,.25)"></span>
+        <button class="modal-x" onclick="closeGallery()">✕</button>
       </div>
     </div>
     <div id="gallGrid"></div>
+  </div>
+
+  <!-- VIEWER -->
+  <div id="viewerWrap">
+    <div id="viewerHdr">
+      <div id="viewerMeta"></div>
+      <div id="viewerHdrBtns">
+        <button class="vhdr-btn" onclick="saveCurrentShot()">&#x2193; Salva</button>
+        <button class="vhdr-btn" onclick="closeViewer()">✕</button>
+      </div>
+    </div>
+    <div id="viewerImgWrap"
+      ontouchstart="onVTouchStart(event)"
+      ontouchend="onVTouchEnd(event)">
+      <img id="viewerImg" src="" alt="">
+      <button id="viewerPrevBtn" onclick="viewerStep(-1)">&#x2039;</button>
+      <button id="viewerNextBtn" onclick="viewerStep(1)">&#x203A;</button>
+      <div id="viewerCounter"></div>
+    </div>
   </div>
 
 </div><!-- /app -->
@@ -389,39 +355,98 @@ const ASPECT_RATIOS=[
   {label:"2.76:1",name:"Ultra Pan.",  value:2.76 },
 ];
 
-// ─── STATE ────────────────────────────────────────────────────────────────────
-const S={brand:"ARRI",camIdx:0,modeIdx:0,lensCategory:"ARRI/Zeiss",seriesIdx:0,focalIdx:0,arIdx:3,phoneFOV:65,fovSource:"auto",facingMode:"environment",overlays:{frame:true,frameLabel:true,safe:true,grid:false,cross:true,info:true,horizon:false}};
-const getCam=()=>CAMERAS[S.brand][S.camIdx];
-const getMode=()=>getCam().modes[S.modeIdx];
-const getSeries=()=>LENSES[S.lensCategory][S.seriesIdx];
-const getFocal=()=>getSeries().focals[S.focalIdx];
-const getAR=()=>ASPECT_RATIOS[S.arIdx];
-const getHFOV=()=>2*Math.atan(getMode().w/(2*getFocal()))*(180/Math.PI);
+// ─── LOCALSTORAGE KEYS ────────────────────────────────────────────────────────
+const LS_SET  = 'op2_settings';
+const LS_SHOT = 'op2_shots';
+const MAX_SHOTS = 8;
 
-// Screenshots store
+// ─── STATE ────────────────────────────────────────────────────────────────────
+const S={
+  brand:"ARRI",camIdx:0,modeIdx:0,
+  lensCategory:"ARRI/Zeiss",seriesIdx:0,focalIdx:0,
+  arIdx:3,phoneFOV:65,fovSource:"auto",facingMode:"environment",
+  overlays:{frame:true,frameLabel:false,safe:false,grid:false,cross:false,info:true,horizon:false}
+};
+const getCam    =()=>CAMERAS[S.brand][S.camIdx];
+const getMode   =()=>getCam().modes[S.modeIdx];
+const getSeries =()=>LENSES[S.lensCategory][S.seriesIdx];
+const getFocal  =()=>getSeries().focals[S.focalIdx];
+const getAR     =()=>ASPECT_RATIOS[S.arIdx];
+const getHFOV   =()=>2*Math.atan(getMode().w/(2*getFocal()))*(180/Math.PI);
+
+// ─── PERSIST SETTINGS ─────────────────────────────────────────────────────────
+function saveSettings(){
+  try{
+    localStorage.setItem(LS_SET,JSON.stringify({
+      brand:S.brand,camIdx:S.camIdx,modeIdx:S.modeIdx,
+      lensCategory:S.lensCategory,seriesIdx:S.seriesIdx,focalIdx:S.focalIdx,
+      arIdx:S.arIdx,phoneFOV:S.phoneFOV,fovSource:S.fovSource,
+      overlays:{...S.overlays}
+    }));
+  }catch(e){}
+}
+
+function loadSettings(){
+  try{
+    const raw=localStorage.getItem(LS_SET);
+    if(!raw)return;
+    const d=JSON.parse(raw);
+    if(d.brand&&CAMERAS[d.brand]){
+      S.brand=d.brand;
+      if(CAMERAS[d.brand][d.camIdx])S.camIdx=d.camIdx;
+      if(getCam().modes[d.modeIdx])S.modeIdx=d.modeIdx;
+    }
+    if(d.lensCategory&&LENSES[d.lensCategory]){
+      S.lensCategory=d.lensCategory;
+      if(LENSES[d.lensCategory][d.seriesIdx])S.seriesIdx=d.seriesIdx;
+      if(getSeries().focals[d.focalIdx]!==undefined)S.focalIdx=d.focalIdx;
+    }
+    if(d.arIdx>=0&&d.arIdx<ASPECT_RATIOS.length)S.arIdx=d.arIdx;
+    if(d.phoneFOV>=40&&d.phoneFOV<=105){S.phoneFOV=d.phoneFOV;S.fovSource=d.fovSource||'auto';}
+    if(d.overlays)S.overlays={...S.overlays,...d.overlays};
+  }catch(e){}
+}
+
+// ─── PERSIST SCREENSHOTS ──────────────────────────────────────────────────────
 const screenshots=[];
 
-// Recording state
-let mediaRecorder=null, recordedChunks=[], isRecording=false;
-let recSeconds=0, recTimerInterval=null;
+function saveScreenshots(){
+  try{
+    const data=screenshots.slice(-MAX_SHOTS).map(s=>({dataUrl:s.dataUrl,meta:s.meta,filename:s.filename}));
+    localStorage.setItem(LS_SHOT,JSON.stringify(data));
+  }catch(e){
+    // If quota exceeded, try with fewer
+    try{
+      const data=screenshots.slice(-3).map(s=>({dataUrl:s.dataUrl,meta:s.meta,filename:s.filename}));
+      localStorage.setItem(LS_SHOT,JSON.stringify(data));
+    }catch(e2){}
+  }
+}
+
+function loadScreenshots(){
+  try{
+    const raw=localStorage.getItem(LS_SHOT);
+    if(!raw)return;
+    JSON.parse(raw).forEach(s=>screenshots.push(s));
+    updateGalleryThumb();
+  }catch(e){}
+}
 
 // ─── CANVAS / ORIENTATION ─────────────────────────────────────────────────────
-const app=document.getElementById('app');
-const video=document.getElementById('video');
+const app   =document.getElementById('app');
+const video =document.getElementById('video');
 const canvas=document.getElementById('canvas');
-const ctx=canvas.getContext('2d');
+const ctx   =canvas.getContext('2d');
 const SIDE_W=88;
 let DPR=1;
 
 function getLandscapeDims(){const vw=window.innerWidth,vh=window.innerHeight;return vh>vw?{W:vh,H:vw}:{W:vw,H:vh};}
 
 function applyLandscape(){
-  const vw=window.innerWidth,vh=window.innerHeight,portrait=vh>vw;
-  if(portrait){
-    app.style.cssText=`position:fixed;width:${vh}px;height:${vw}px;top:${(vh-vw)/2}px;left:-${(vh-vw)/2}px;transform:rotate(90deg);transform-origin:center center;overflow:hidden;`;
-  } else {
-    app.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;overflow:hidden;';
-  }
+  const vw=window.innerWidth,vh=window.innerHeight,p=vh>vw;
+  app.style.cssText=p
+    ?`position:fixed;width:${vh}px;height:${vw}px;top:${(vh-vw)/2}px;left:-${(vh-vw)/2}px;transform:rotate(90deg);transform-origin:center center;overflow:hidden;`
+    :'position:fixed;top:0;left:0;width:100%;height:100%;overflow:hidden;';
   resizeCanvas();
 }
 
@@ -439,6 +464,7 @@ window.addEventListener('orientationchange',()=>setTimeout(applyLandscape,150));
 
 // ─── AUTO FOV ─────────────────────────────────────────────────────────────────
 function detectFOV(stream){
+  if(S.fovSource==='manual')return; // respect manual override
   const track=stream.getVideoTracks()[0];if(!track)return;
   const label=(track.label||'').toLowerCase(),ua=navigator.userAgent;
   let v=null;
@@ -450,7 +476,7 @@ function detectFOV(stream){
   }
   if(!v&&track.getCapabilities){try{const c=track.getCapabilities();if(c.zoom)v=(c.zoom.min||1)<=0.6?98:68;}catch(e){}}
   if(!v)v=/android/i.test(navigator.userAgent)?68:65;
-  S.phoneFOV=v;S.fovSource='auto';
+  S.phoneFOV=v;
   const sl=$('fovSlider');if(sl)sl.value=v;
   const fv=$('fovVal');if(fv)fv.textContent=v+'\u00b0';
   buildFovPresets();updateFovStatus();
@@ -473,23 +499,106 @@ async function startCamera(){
   }catch(e){console.error('Camera:',e);}
 }
 
+// ─── RECORDING ────────────────────────────────────────────────────────────────
+let mediaRecorder=null,recordedChunks=[],isRecording=false,recSecs=0,recTimer=null;
+
+function toggleRecording(){isRecording?stopRecording():startRecording();}
+
+async function startRecording(){
+  try{
+    let stream, hasOverlays=false;
+
+    // Try canvas stream first (with overlays)
+    if(canvas.captureStream){
+      try{
+        const cs=canvas.captureStream(30);
+        if(cs.getVideoTracks().length>0){stream=cs;hasOverlays=true;}
+      }catch(e){}
+    }
+
+    // Fallback: raw video stream
+    if(!stream&&video.srcObject){
+      stream=new MediaStream(video.srcObject.getVideoTracks());
+    }
+    if(!stream){alert('Registrazione non disponibile su questo dispositivo.');return;}
+
+    // Add audio
+    if(video.srcObject){
+      video.srcObject.getAudioTracks().forEach(t=>{try{stream.addTrack(t);}catch(e){}});
+    }
+
+    // Find supported mime type
+    const mimes=[
+      'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+      'video/mp4;codecs=avc1',
+      'video/mp4',
+      'video/webm;codecs=vp9,opus',
+      'video/webm;codecs=vp8,opus',
+      'video/webm',
+      ''
+    ];
+    const mime=mimes.find(m=>{
+      if(!m)return true;
+      try{return MediaRecorder.isTypeSupported(m);}catch(e){return false;}
+    })||'';
+
+    recordedChunks=[];
+    const opts={videoBitsPerSecond:8000000};
+    if(mime)opts.mimeType=mime;
+
+    mediaRecorder=new MediaRecorder(stream,opts);
+    mediaRecorder.ondataavailable=e=>{if(e.data&&e.data.size>0)recordedChunks.push(e.data);};
+    mediaRecorder.onstop=()=>{
+      const finalMime=mediaRecorder.mimeType||'video/mp4';
+      const ext=finalMime.includes('mp4')?'mp4':'webm';
+      const blob=new Blob(recordedChunks,{type:finalMime});
+      const url=URL.createObjectURL(blob);
+      const now=new Date();
+      const ts=`${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
+      const a=document.createElement('a');
+      a.href=url;a.download=`opticalpro_${S.brand}_${getFocal()}mm_${getAR().label.replace(':','x')}_${ts}.${ext}`;
+      a.click();
+      setTimeout(()=>URL.revokeObjectURL(url),5000);
+      isRecording=false;clearInterval(recTimer);recSecs=0;updateRecBtn();
+    };
+    mediaRecorder.onerror=e=>{console.error('MediaRecorder error:',e);stopRecording();};
+    mediaRecorder.start(500);
+    isRecording=true;recSecs=0;
+    recTimer=setInterval(()=>{recSecs++;updateRecBtn();},1000);
+    updateRecBtn();
+    if(!hasOverlays)console.warn('Recording without overlays (canvas capture not available)');
+  }catch(e){
+    console.error('startRecording:',e);
+    alert('Errore avvio registrazione: '+e.message);
+  }
+}
+
+function stopRecording(){
+  if(mediaRecorder&&mediaRecorder.state!=='inactive'){mediaRecorder.stop();}
+  clearInterval(recTimer);
+}
+
+function updateRecBtn(){
+  $('recBtn').classList.toggle('recording',isRecording);
+}
+
 // ─── DRAW ─────────────────────────────────────────────────────────────────────
 const OG='#FF9500';
+
 function getFrameRect(){
-  const logW=canvas.width/DPR,logH=canvas.height/DPR;
-  const ar=getAR(),availW=logW-SIDE_W;
+  const logW=canvas.width/DPR,logH=canvas.height/DPR,ar=getAR();
+  const availW=logW-SIDE_W;
   let fW=availW,fH=fW/ar.value;
   if(fH>logH){fH=logH;fW=fH*ar.value;}
   return{fX:(availW-fW)/2,fY:(logH-fH)/2,fW,fH,logW,logH};
 }
 
 function draw(){
-  const logW=canvas.width/DPR,logH=canvas.height/DPR;
+  const{fX,fY,fW,fH,logW,logH}=getFrameRect();
+  const ar=getAR(),cinemaFOV=getHFOV();
   ctx.setTransform(DPR,0,0,DPR,0,0);
   ctx.clearRect(0,0,logW,logH);
 
-  const ar=getAR(),cinemaFOV=getHFOV();
-  const{fX,fY,fW,fH}=getFrameRect();
   const vZoom=Math.tan(S.phoneFOV*Math.PI/360)/Math.tan(cinemaFOV*Math.PI/360);
 
   // BG
@@ -517,7 +626,7 @@ function draw(){
     ctx.restore();
   }
 
-  // Letterbox mask
+  // Letterbox
   ctx.fillStyle='rgba(0,0,0,.88)';
   if(fY>0){ctx.fillRect(0,0,logW,fY);ctx.fillRect(0,fY+fH,logW,logH-fY-fH);}
   if(fX>0){ctx.fillRect(0,fY,fX,fH);ctx.fillRect(fX+fW,fY,logW-fX-fW,fH);}
@@ -590,21 +699,18 @@ function draw(){
     ctx.fillText(st,fX+fW-ctx.measureText(st).width-pad,fY+fH-pad);
   }
 
-  // REC indicator on canvas
+  // REC indicator
   if(isRecording){
-    const mins=Math.floor(recSeconds/60),secs=recSeconds%60;
-    const recTxt=`${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+    const mins=String(Math.floor(recSecs/60)).padStart(2,'0');
+    const secs=String(recSecs%60).padStart(2,'0');
     const pulse=Math.floor(Date.now()/500)%2===0;
-    const fs2=Math.max(9,Math.min(11,fW/52)),pad2=8;
-    ctx.font=`bold ${fs2}px 'Courier New',monospace`;
-    // Dot
-    ctx.beginPath();
-    ctx.arc(fX+fW/2-ctx.measureText(recTxt).width/2-10,fY+pad2+fs2/2,4,0,Math.PI*2);
-    ctx.fillStyle=pulse?'#FF3B30':'rgba(255,59,48,.3)';
-    ctx.fill();
-    // Time
-    ctx.fillStyle='#FF3B30';
-    ctx.fillText(recTxt,fX+fW/2-ctx.measureText(recTxt).width/2,fY+pad2+fs2);
+    ctx.font=`bold 11px 'Courier New',monospace`;
+    const recW=ctx.measureText('00:00').width+14;
+    const rx=fX+(fW-recW)/2,ry=fY+8;
+    ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(rx-2,ry,recW+4,16);
+    ctx.beginPath();ctx.arc(rx+8,ry+8,4,0,Math.PI*2);
+    ctx.fillStyle=pulse?'#FF3B30':'rgba(255,59,48,.3)';ctx.fill();
+    ctx.fillStyle='#FF3B30';ctx.fillText(`${mins}:${secs}`,rx+16,ry+11);
   }
 
   requestAnimationFrame(draw);
@@ -626,73 +732,100 @@ function captureScreenshot(){
   const center=`${s.name}  ${f}mm  ${getHFOV().toFixed(1)}\u00b0`;
   const right=`${ar.label}  ${m.w}\u00d7${m.h}mm`;
   tc.fillText(left,Math.round(8*DPR),my);
-  const cw=tc.measureText(center).width;tc.fillText(center,(pFW-cw)/2,my);
-  const rw=tc.measureText(right).width;tc.fillText(right,pFW-rw-Math.round(8*DPR),my);
+  const cw=tc.measureText(center).width;tc.fillText(center,(Math.round(pFW)-cw)/2,my);
+  const rw=tc.measureText(right).width;tc.fillText(right,Math.round(pFW)-rw-Math.round(8*DPR),my);
 
-  const dataUrl=tmp.toDataURL('image/jpeg',.93);
+  const dataUrl=tmp.toDataURL('image/jpeg',.88);
   const now=new Date();
   const ts=`${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`;
-  screenshots.push({dataUrl,meta:`${S.brand} ${cam.model} | ${s.name} ${f}mm | ${ar.label}`,filename:`opticalpro_${S.brand}_${f}mm_${ar.label.replace(':','x')}_${ts}.jpg`});
+  const shot={dataUrl,meta:`${S.brand} ${cam.model} | ${s.name} ${f}mm | ${ar.label}`,filename:`opticalpro_${S.brand}_${f}mm_${ar.label.replace(':','x')}_${ts}.jpg`};
 
+  if(screenshots.length>=MAX_SHOTS)screenshots.shift(); // FIFO limit
+  screenshots.push(shot);
+  saveScreenshots();
   updateGalleryThumb();
 
-  // Flash
-  const fl=document.getElementById('shotFlash');
-  fl.classList.add('show');setTimeout(()=>fl.classList.remove('show'),160);
+  const fl=$('shotFlash');fl.classList.add('show');setTimeout(()=>fl.classList.remove('show'),150);
 }
 
 function updateGalleryThumb(){
   const cont=$('gallContainer'),thumb=$('gallThumb'),count=$('gallCount');
   if(screenshots.length>0){
-    thumb.src=screenshots[screenshots.length-1].dataUrl;
-    thumb.style.display='block';
+    thumb.src=screenshots[screenshots.length-1].dataUrl;thumb.style.display='block';
     cont.classList.remove('empty');
-    if(screenshots.length>1){count.textContent=screenshots.length;count.style.display='block';}
-    else count.style.display='none';
-  } else {
-    thumb.style.display='none';cont.classList.add('empty');count.style.display='none';
-  }
+    count.textContent=screenshots.length;count.style.display=screenshots.length>1?'block':'none';
+  }else{thumb.style.display='none';cont.classList.add('empty');count.style.display='none';}
 }
 
-// ─── GALLERY ─────────────────────────────────────────────────────────────────
-function openGallery(){
-  renderGalleryGrid();
-  $('gallBackdrop').classList.add('open');
-  $('gallModal').classList.add('open');
+// ─── SAVE TO PHOTOS ───────────────────────────────────────────────────────────
+async function saveToPhotos(dataUrl,filename){
+  try{
+    if(navigator.share&&navigator.canShare){
+      const res=await fetch(dataUrl);
+      const blob=await res.blob();
+      const file=new File([blob],filename,{type:'image/jpeg'});
+      if(navigator.canShare({files:[file]})){
+        await navigator.share({files:[file],title:'Optical Pro'});
+        return;
+      }
+    }
+  }catch(e){if(e.name==='AbortError')return;}
+  // Fallback download
+  const a=document.createElement('a');a.href=dataUrl;a.download=filename;a.click();
 }
-function closeGallery(){
-  $('gallBackdrop').classList.remove('open');
-  $('gallModal').classList.remove('open');
-}
+
+// ─── GALLERY ──────────────────────────────────────────────────────────────────
+function openGallery(){renderGalleryGrid();$('gallBack').classList.add('open');$('gallModal').classList.add('open');}
+function closeGallery(){$('gallBack').classList.remove('open');$('gallModal').classList.remove('open');}
+
 function renderGalleryGrid(){
   const grid=$('gallGrid');
-  $('gallTotalLabel').textContent=screenshots.length?screenshots.length+' foto':'';
-  if(!screenshots.length){
-    grid.innerHTML='<div class="gall-empty">Nessuno screenshot ancora.<br>Usa il tasto ⊙ per catturare.</div>';
-    return;
-  }
+  $('gallTotal').textContent=screenshots.length?screenshots.length+' foto':'';
+  if(!screenshots.length){grid.innerHTML='<div class="gall-empty">Nessuno screenshot.<br>Usa ⊙ per catturare.</div>';return;}
   grid.innerHTML=screenshots.map((s,i)=>`
-    <div class="gitem">
+    <div class="gitem" onclick="openViewer(${i})">
       <img src="${s.dataUrl}" loading="lazy">
       <div class="gitem-meta">${s.meta}</div>
-      <div class="gitem-actions">
-        <button class="g-btn" onclick="downloadShot(${i})">&#x2193; Salva</button>
-        <button class="g-btn" onclick="deleteShot(${i})">&#x2715;</button>
-      </div>
+      <button class="gitem-del" onclick="event.stopPropagation();deleteShot(${i})">&#x2715;</button>
     </div>`).join('');
 }
-function downloadShot(i){
-  const a=document.createElement('a');a.href=screenshots[i].dataUrl;a.download=screenshots[i].filename;a.click();
+
+function deleteShot(i){screenshots.splice(i,1);saveScreenshots();updateGalleryThumb();renderGalleryGrid();}
+
+// ─── VIEWER ───────────────────────────────────────────────────────────────────
+let viewerIdx=0,vTouchX=0;
+
+function openViewer(i){
+  viewerIdx=i;renderViewer();
+  closeGallery();
+  $('viewerWrap').classList.add('open');
 }
-function deleteShot(i){
-  screenshots.splice(i,1);
-  updateGalleryThumb();
-  renderGalleryGrid();
+function closeViewer(){$('viewerWrap').classList.remove('open');}
+function renderViewer(){
+  const s=screenshots[viewerIdx];
+  $('viewerImg').src=s.dataUrl;
+  $('viewerMeta').textContent=s.meta;
+  $('viewerCounter').textContent=`${viewerIdx+1} / ${screenshots.length}`;
+  $('viewerPrevBtn').disabled=viewerIdx===0;
+  $('viewerNextBtn').disabled=viewerIdx===screenshots.length-1;
+}
+function viewerStep(d){
+  viewerIdx=Math.max(0,Math.min(screenshots.length-1,viewerIdx+d));
+  renderViewer();
+}
+function onVTouchStart(e){vTouchX=e.touches[0].clientX;}
+function onVTouchEnd(e){
+  const dx=e.changedTouches[0].clientX-vTouchX;
+  if(Math.abs(dx)>50)viewerStep(dx<0?1:-1);
+}
+function saveCurrentShot(){
+  const s=screenshots[viewerIdx];
+  saveToPhotos(s.dataUrl,s.filename);
 }
 
 // ─── SETTINGS MODAL ───────────────────────────────────────────────────────────
-function openSettings(){$('settBackdrop').classList.add('open');$('settModal').classList.add('open');}
-function closeSettings(){$('settBackdrop').classList.remove('open');$('settModal').classList.remove('open');}
+function openSettings(){$('settBack').classList.add('open');$('settModal').classList.add('open');}
+function closeSettings(){$('settBack').classList.remove('open');$('settModal').classList.remove('open');}
 
 // ─── UI BUILDERS ─────────────────────────────────────────────────────────────
 const $=id=>document.getElementById(id);
@@ -714,12 +847,11 @@ function buildFovPresets(){
   $('fovPresets').innerHTML=p.map(([l,v])=>`<button class="chip${S.phoneFOV===v?' active':''}" style="font-size:10px" onclick="setFovPreset(${v})">${l}</button>`).join('');
 }
 function updateSidebar(){
-  const cam=getCam(),m=getMode(),s=getSeries(),f=getFocal(),ar=getAR();
+  const cam=getCam(),m=getMode(),s=getSeries(),f=getFocal();
   $('sCamName').textContent=`${S.brand} ${cam.model}`;
   $('sModeName').textContent=m.name;
   $('sSeriesName').textContent=s.name;
   $('sNavFocalNum').textContent=f;
-  $('sARLabel').textContent=ar.label;
   $('btnPrev').disabled=S.focalIdx===0;
   $('btnNext').disabled=S.focalIdx===s.focals.length-1;
 }
@@ -727,30 +859,29 @@ function buildAll(){
   buildBrandChips();buildCamSel();buildModeSel();buildSensorMeta();
   buildLensBrandChips();buildSeriesSel();buildFocalChips();buildARChips();buildLensMeta();
   buildOverlayChips();buildFovPresets();updateFovStatus();updateSidebar();
+  const sl=$('fovSlider');if(sl)sl.value=S.phoneFOV;
+  const fv=$('fovVal');if(fv)fv.textContent=S.phoneFOV+'\u00b0';
 }
 
 // ─── HANDLERS ─────────────────────────────────────────────────────────────────
-function switchTab(name,btn){
-  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  $('pane-'+name).classList.add('active');btn.classList.add('active');
-}
-function setBrand(b){S.brand=b;S.camIdx=0;S.modeIdx=0;buildBrandChips();buildCamSel();buildModeSel();buildSensorMeta();buildLensMeta();updateSidebar();}
-function onCamChange(){S.camIdx=+$('camSel').value;S.modeIdx=0;buildModeSel();buildSensorMeta();buildLensMeta();updateSidebar();}
-function onModeChange(){S.modeIdx=+$('modeSel').value;buildSensorMeta();buildLensMeta();updateSidebar();}
-function setLensCat(c){S.lensCategory=c;S.seriesIdx=0;S.focalIdx=0;buildLensBrandChips();buildSeriesSel();buildFocalChips();buildLensMeta();updateSidebar();}
-function onSeriesChange(){S.seriesIdx=+$('seriesSel').value;S.focalIdx=0;buildFocalChips();buildLensMeta();updateSidebar();}
-function setFocalIdx(i){S.focalIdx=i;buildFocalChips();buildLensMeta();updateSidebar();}
-function prevFocalEv(e){e.stopPropagation();if(S.focalIdx>0){S.focalIdx--;buildFocalChips();buildLensMeta();updateSidebar();}}
-function nextFocalEv(e){e.stopPropagation();const s=getSeries();if(S.focalIdx<s.focals.length-1){S.focalIdx++;buildFocalChips();buildLensMeta();updateSidebar();}}
-function setAR(i){S.arIdx=i;buildARChips();updateSidebar();}
-function toggleOv(k){S.overlays[k]=!S.overlays[k];buildOverlayChips();}
-function onFovChange(){S.phoneFOV=+$('fovSlider').value;S.fovSource='manual';$('fovVal').textContent=S.phoneFOV+'\u00b0';buildFovPresets();updateFovStatus();}
-function setFovPreset(v){S.phoneFOV=v;S.fovSource='manual';$('fovSlider').value=v;$('fovVal').textContent=v+'\u00b0';buildFovPresets();updateFovStatus();}
-function resetFovAuto(){if(video.srcObject)detectFOV(video.srcObject);}
+function switchTab(n,btn){document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));$(('pane-'+n)).classList.add('active');btn.classList.add('active');}
+function setBrand(b){S.brand=b;S.camIdx=0;S.modeIdx=0;buildBrandChips();buildCamSel();buildModeSel();buildSensorMeta();buildLensMeta();updateSidebar();saveSettings();}
+function onCamChange(){S.camIdx=+$('camSel').value;S.modeIdx=0;buildModeSel();buildSensorMeta();buildLensMeta();updateSidebar();saveSettings();}
+function onModeChange(){S.modeIdx=+$('modeSel').value;buildSensorMeta();buildLensMeta();updateSidebar();saveSettings();}
+function setLensCat(c){S.lensCategory=c;S.seriesIdx=0;S.focalIdx=0;buildLensBrandChips();buildSeriesSel();buildFocalChips();buildLensMeta();updateSidebar();saveSettings();}
+function onSeriesChange(){S.seriesIdx=+$('seriesSel').value;S.focalIdx=0;buildFocalChips();buildLensMeta();updateSidebar();saveSettings();}
+function setFocalIdx(i){S.focalIdx=i;buildFocalChips();buildLensMeta();updateSidebar();saveSettings();}
+function prevFocalEv(e){e.stopPropagation();if(S.focalIdx>0){S.focalIdx--;buildFocalChips();buildLensMeta();updateSidebar();saveSettings();}}
+function nextFocalEv(e){e.stopPropagation();const s=getSeries();if(S.focalIdx<s.focals.length-1){S.focalIdx++;buildFocalChips();buildLensMeta();updateSidebar();saveSettings();}}
+function setAR(i){S.arIdx=i;buildARChips();updateSidebar();saveSettings();}
+function toggleOv(k){S.overlays[k]=!S.overlays[k];buildOverlayChips();saveSettings();}
+function onFovChange(){S.phoneFOV=+$('fovSlider').value;S.fovSource='manual';$('fovVal').textContent=S.phoneFOV+'\u00b0';buildFovPresets();updateFovStatus();saveSettings();}
+function setFovPreset(v){S.phoneFOV=v;S.fovSource='manual';$('fovSlider').value=v;$('fovVal').textContent=v+'\u00b0';buildFovPresets();updateFovStatus();saveSettings();}
+function resetFovAuto(){S.fovSource='auto';if(video.srcObject)detectFOV(video.srcObject);}
 
 // ─── LAUNCH ───────────────────────────────────────────────────────────────────
 (function(){
+  loadSettings(); // restore before UI build
   const splash=document.getElementById('splash');
   setTimeout(()=>splash.classList.add('rotate'),2000);
   setTimeout(()=>splash.classList.add('fade'),3100);
@@ -759,6 +890,7 @@ function resetFovAuto(){if(video.srcObject)detectFOV(video.srcObject);}
     app.style.display='block';
     applyLandscape();
     buildAll();
+    loadScreenshots();
     startCamera();
     draw();
   },3900);
