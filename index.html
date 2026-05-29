@@ -7,311 +7,291 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Optical Pro</title>
 <style>
-/* ── RESET ────────────────────────────────────────────── */
+/* ── RESET ────────────────────────────────────────── */
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
-:root {
-  --orange: #FF9500;
-  --orange-glow: rgba(255,149,0,0.15);
-  --bg: #060606;
-  --bar-h: 70px;
-  --radius: 20px;
-}
-body { background:#000; overflow:hidden; -webkit-tap-highlight-color:transparent; touch-action:none; }
+:root { --orange:#FF9500; --bg:#060606; --bar-h:70px; --r:20px; }
+html, body { background:#000; overflow:hidden; height:100%; width:100%; }
+body { -webkit-tap-highlight-color:transparent; touch-action:none; }
 
-/* ── SPLASH ───────────────────────────────────────────── */
+/* ── SPLASH ───────────────────────────────────────── */
 #splash {
   position:fixed; inset:0;
   background:#000;
   display:flex; align-items:center; justify-content:center;
   z-index:999;
-  transition: transform 0.9s cubic-bezier(0.4,0,0.2,1), opacity 0.65s ease;
+  transition: transform .9s cubic-bezier(.4,0,.2,1), opacity .65s ease;
 }
-#splash.rotate { transform:rotate(90deg) scale(0.92); }
+#splash.rotate { transform:rotate(90deg) scale(.92); }
 #splash.fade   { opacity:0; pointer-events:none; }
-
-#splashInner { text-align:center; user-select:none; }
-
+#splashInner   { text-align:center; user-select:none; }
 #splashOptical {
   font-family:'Arial Black','Arial Bold',Arial,sans-serif;
   font-weight:900;
   font-size:clamp(56px,16vw,100px);
-  color:#fff;
-  letter-spacing:-3px;
-  line-height:0.95;
+  color:#fff; letter-spacing:-3px; line-height:.95;
 }
 #splashPro {
   font-family:-apple-system,'Helvetica Neue',sans-serif;
   font-weight:100;
   font-size:clamp(13px,3.5vw,22px);
-  letter-spacing:14px;
-  color:var(--orange);
-  margin-top:10px;
-  padding-left:14px;
+  letter-spacing:14px; color:var(--orange);
+  margin-top:10px; padding-left:14px;
 }
-#splashBar {
-  width:36px; height:1px;
-  background:var(--orange);
-  margin:18px auto 0;
-  opacity:0.5;
-}
+#splashBar { width:36px; height:1px; background:var(--orange); margin:18px auto 0; opacity:.5; }
 
-/* ── APP ──────────────────────────────────────────────── */
-#app { position:fixed; inset:0; }
+/* ── APP ──────────────────────────────────────────── */
+#app {
+  position:fixed; top:0; left:0;
+  width:100vw; height:100vh;
+  overflow:hidden;
+}
+#video { position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
+#canvas { position:absolute; top:0; left:0; display:block; }
 
-#video {
-  position:absolute; width:1px; height:1px;
-  opacity:0; pointer-events:none;
-}
-#canvas {
-  position:absolute; inset:0;
-  width:100%; height:100%;
-  display:block;
-}
-
-/* ── TOP BAR ──────────────────────────────────────────── */
-#topbar {
-  position:fixed; top:0; left:0; right:0;
-  padding:max(10px, env(safe-area-inset-top)) 16px 10px;
-  display:flex; justify-content:space-between; align-items:center;
-  background:linear-gradient(to bottom,rgba(0,0,0,0.68),transparent);
-  z-index:40; pointer-events:none;
-}
-.wordmark { display:flex; align-items:baseline; gap:5px; }
-.wm-o {
-  font-family:'Arial Black',Arial,sans-serif;
-  font-weight:900; font-size:13px; color:#fff; letter-spacing:0.5px;
-}
-.wm-p {
-  font-family:-apple-system,sans-serif;
-  font-weight:200; font-size:9px;
-  letter-spacing:5px; color:var(--orange);
-}
-.icon-btn {
-  pointer-events:all;
-  background:rgba(255,255,255,0.07);
-  border:1px solid rgba(255,255,255,0.1);
-  color:#fff; width:36px; height:36px;
-  border-radius:50%;
-  display:flex; align-items:center; justify-content:center;
-  font-size:16px; cursor:pointer;
-  backdrop-filter:blur(10px);
-  -webkit-backdrop-filter:blur(10px);
-  transition:background 0.15s;
-}
-.icon-btn:active { background:rgba(255,149,0,0.2); }
-
-/* ── BOTTOM BAR ───────────────────────────────────────── */
+/* ── BOTTOM BAR ───────────────────────────────────── */
 #bottomBar {
-  position:fixed; bottom:0; left:0; right:0;
+  position:absolute; bottom:0; left:0; right:0;
   height:var(--bar-h);
-  background:rgba(7,7,7,0.97);
-  border-top:1px solid rgba(255,149,0,0.16);
-  border-radius:var(--radius) var(--radius) 0 0;
-  z-index:40;
+  background:rgba(7,7,7,.97);
+  border-top:1px solid rgba(255,149,0,.18);
+  border-radius:var(--r) var(--r) 0 0;
   backdrop-filter:blur(20px);
   -webkit-backdrop-filter:blur(20px);
+  z-index:10;
 }
 #barHandle {
   width:100%; padding:8px 0 0;
-  display:flex; justify-content:center;
-  cursor:pointer;
+  display:flex; justify-content:center; cursor:pointer;
 }
 #handlePill {
   width:34px; height:3px;
-  background:rgba(255,255,255,0.1);
-  border-radius:2px;
-  transition:background 0.15s;
+  background:rgba(255,255,255,.1); border-radius:2px;
 }
-#bottomBar:active #handlePill { background:rgba(255,149,0,0.3); }
-
 #barContent {
   display:flex; align-items:center;
-  padding:0 16px;
+  padding:0 14px;
   height:calc(var(--bar-h) - 16px);
 }
 
-/* Bar — left: camera */
+/* Bar left */
 #barLeft { flex:1; min-width:0; cursor:pointer; }
 #barCamName {
   font-family:'Courier New',monospace;
   font-size:11px; font-weight:bold;
-  color:rgba(255,255,255,0.7);
+  color:rgba(255,255,255,.7);
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 #barModeName {
   font-family:'Courier New',monospace;
-  font-size:9px; color:rgba(255,255,255,0.28);
+  font-size:9px; color:rgba(255,255,255,.28);
   margin-top:2px; white-space:nowrap;
 }
 
-/* Bar — center: focal nav */
-#barCenter { flex:0 0 auto; text-align:center; padding:0 12px; }
+/* Bar center */
+#barCenter { flex:0 0 auto; text-align:center; padding:0 10px; }
 #barSeriesName {
   font-family:'Courier New',monospace;
-  font-size:8px; letter-spacing:1px;
-  color:rgba(255,255,255,0.25); margin-bottom:1px;
+  font-size:11px; letter-spacing:.5px;
+  color:rgba(255,255,255,.4); margin-bottom:1px;
   white-space:nowrap;
 }
-#barFocalRow { display:flex; align-items:center; gap:0; }
-
+#barFocalRow { display:flex; align-items:center; }
 .f-arrow {
   background:transparent; border:none;
-  color:var(--orange); font-size:24px; line-height:1;
-  padding:0 10px; cursor:pointer;
+  color:var(--orange); font-size:30px; line-height:1;
+  padding:0 8px; cursor:pointer;
   font-family:-apple-system,sans-serif;
   -webkit-tap-highlight-color:transparent;
-  transition:opacity 0.1s, transform 0.1s;
-  opacity:0.75;
+  transition:opacity .1s, transform .1s; opacity:.8;
 }
-.f-arrow:disabled { opacity:0.15; cursor:default; }
-.f-arrow:active:not(:disabled) { opacity:1; transform:scale(0.85); }
-
+.f-arrow:disabled { opacity:.15; cursor:default; }
+.f-arrow:active:not(:disabled) { opacity:1; transform:scale(.82); }
 #navFocalNum {
   font-family:'Courier New',monospace;
   font-size:28px; font-weight:bold;
   color:#fff; letter-spacing:-1px;
-  min-width:54px; text-align:center; line-height:1;
+  min-width:52px; text-align:center; line-height:1;
 }
 #navFocalUnit {
   font-family:'Courier New',monospace;
-  font-size:11px; color:rgba(255,255,255,0.3);
+  font-size:11px; color:rgba(255,255,255,.3);
   align-self:flex-end; margin-bottom:4px; margin-left:-2px;
 }
 
-/* Bar — right: AR + menu */
+/* Bar right */
 #barRight {
-  flex:1; display:flex; flex-direction:column;
-  align-items:flex-end; gap:5px;
+  flex:1; display:flex;
+  align-items:center; justify-content:flex-end; gap:10px;
 }
 #barARLabel {
   font-family:'Courier New',monospace;
-  font-size:12px; font-weight:bold;
-  color:var(--orange);
+  font-size:12px; font-weight:bold; color:var(--orange);
 }
-#barMenuBtn {
+.bar-icon-btn {
   background:transparent; border:none;
-  color:rgba(255,255,255,0.3); font-size:20px;
-  cursor:pointer; padding:0; line-height:1;
-  transition:color 0.15s;
+  cursor:pointer; padding:0;
+  -webkit-tap-highlight-color:transparent;
+  display:flex; align-items:center; justify-content:center;
 }
-#barMenuBtn:active { color:var(--orange); }
 
-/* ── PANEL ────────────────────────────────────────────── */
-#panel {
-  position:fixed; bottom:0; left:0; right:0;
-  max-height:58vh;
-  z-index:35;
-  background:rgba(7,7,7,0.96);
+/* Screenshot btn */
+#shotBtn {
+  width:30px; height:30px;
+  border-radius:50%;
+  border:2px solid rgba(255,255,255,.25);
+  position:relative;
+}
+#shotBtn::before {
+  content:'';
+  position:absolute; inset:5px;
+  border-radius:50%;
+  background:rgba(255,255,255,.6);
+  transition:background .1s;
+}
+#shotBtn:active::before { background:#fff; }
+
+/* Shot flash */
+#shotFlash {
+  position:absolute; inset:0;
+  background:#fff; opacity:0; pointer-events:none;
+  z-index:20; transition:opacity .12s ease;
+}
+#shotFlash.show { opacity:.55; }
+
+/* Menu btn */
+#menuBtn {
+  font-size:22px; color:rgba(255,255,255,.35);
+  transition:color .15s;
+}
+#menuBtn:active { color:var(--orange); }
+
+/* ── MODAL BACKDROP ───────────────────────────────── */
+#backdrop {
+  position:absolute; inset:0;
+  background:rgba(0,0,0,.65);
+  z-index:50; opacity:0; pointer-events:none;
+  transition:opacity .25s ease;
+  backdrop-filter:blur(4px);
+  -webkit-backdrop-filter:blur(4px);
+}
+#backdrop.open { opacity:1; pointer-events:all; }
+
+/* ── SETTINGS MODAL ───────────────────────────────── */
+#modal {
+  position:absolute;
+  top:50%; left:50%;
+  transform:translate(-50%,-46%) scale(.96);
+  width:90%; max-width:420px;
+  max-height:72vh;
+  background:rgba(8,8,8,.98);
   backdrop-filter:blur(28px);
   -webkit-backdrop-filter:blur(28px);
-  border-radius:var(--radius) var(--radius) 0 0;
-  border-top:1px solid rgba(255,149,0,0.12);
-  padding-bottom:var(--bar-h);
-  transform:translateY(100%);
-  transition:transform 0.34s cubic-bezier(0.4,0,0.2,1);
-  overflow-y:auto; -webkit-overflow-scrolling:touch;
+  border-radius:var(--r);
+  border:1px solid rgba(255,149,0,.14);
+  overflow:hidden; display:flex; flex-direction:column;
+  z-index:51; opacity:0; pointer-events:none;
+  transition:opacity .25s ease, transform .25s ease;
 }
-#panel.open { transform:translateY(0); }
+#modal.open {
+  opacity:1; pointer-events:all;
+  transform:translate(-50%,-50%) scale(1);
+}
 
-/* Tabs */
+/* Modal header */
+#modalHeader {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 16px 10px;
+  border-bottom:1px solid rgba(255,255,255,.05);
+  flex-shrink:0;
+}
+#modalTitle {
+  font-family:-apple-system,sans-serif;
+  font-size:10px; font-weight:700;
+  letter-spacing:2.5px; color:rgba(255,255,255,.3);
+  text-transform:uppercase;
+}
+#modalClose {
+  background:rgba(255,255,255,.07);
+  border:none; color:rgba(255,255,255,.5);
+  width:26px; height:26px; border-radius:50%;
+  font-size:14px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  transition:background .12s;
+}
+#modalClose:active { background:rgba(255,149,0,.25); color:var(--orange); }
+
+/* Modal tabs */
 .tabs {
   display:flex;
-  border-bottom:1px solid rgba(255,255,255,0.04);
-  position:sticky; top:0;
-  background:rgba(7,7,7,0.99);
-  border-radius:var(--radius) var(--radius) 0 0;
-  overflow:hidden; z-index:1;
+  border-bottom:1px solid rgba(255,255,255,.04);
+  flex-shrink:0;
 }
 .tab-btn {
   flex:1; background:transparent; border:none;
   border-bottom:2px solid transparent;
-  color:rgba(255,255,255,0.18);
-  padding:13px 4px;
+  color:rgba(255,255,255,.18);
+  padding:11px 4px;
   font-family:-apple-system,sans-serif;
   font-size:10px; font-weight:700;
-  letter-spacing:1.5px; cursor:pointer;
-  transition:color 0.12s; text-transform:uppercase;
+  letter-spacing:1.5px; text-transform:uppercase;
+  cursor:pointer; transition:color .12s;
 }
 .tab-btn.active { color:var(--orange); border-bottom-color:var(--orange); }
 
-.tab-pane { display:none; padding:14px 16px 10px; }
+/* Modal scroll area */
+#modalBody { overflow-y:auto; -webkit-overflow-scrolling:touch; flex:1; }
+.tab-pane { display:none; padding:14px 16px 16px; }
 .tab-pane.active { display:block; }
 
-/* Panel rows */
+/* ── PANEL UI COMPONENTS ─────────────────────────── */
 .row { display:flex; align-items:flex-start; gap:10px; margin-bottom:14px; }
 .lbl {
   font-family:-apple-system,sans-serif;
-  color:rgba(255,255,255,0.2); font-size:9px;
-  font-weight:700; letter-spacing:1.5px;
-  text-transform:uppercase; min-width:46px; padding-top:7px;
+  color:rgba(255,255,255,.2); font-size:9px;
+  font-weight:700; letter-spacing:1.5px; text-transform:uppercase;
+  min-width:46px; padding-top:7px;
 }
 .body { flex:1; }
-
-/* Chips — rounded pills */
 .chips { display:flex; gap:6px; flex-wrap:wrap; }
 .chip {
-  background:transparent;
-  border:1px solid rgba(255,255,255,0.09);
-  color:rgba(255,255,255,0.32);
-  padding:6px 13px; border-radius:50px;
-  cursor:pointer;
-  font-family:'Courier New',monospace;
-  font-size:11px; white-space:nowrap;
-  transition:all 0.12s;
+  background:transparent; border:1px solid rgba(255,255,255,.09);
+  color:rgba(255,255,255,.32); padding:6px 13px; border-radius:50px;
+  cursor:pointer; font-family:'Courier New',monospace;
+  font-size:11px; white-space:nowrap; transition:all .12s;
   -webkit-tap-highlight-color:transparent;
 }
-.chip.active {
-  background:var(--orange); border-color:var(--orange);
-  color:#000; font-weight:700;
-}
-
-/* Overlay chips — square-ish */
+.chip.active { background:var(--orange); border-color:var(--orange); color:#000; font-weight:700; }
 .ov-chip {
   padding:7px 12px; border-radius:10px;
-  border:1px solid rgba(255,255,255,0.07);
-  background:transparent;
-  color:rgba(255,255,255,0.3);
-  font-family:-apple-system,sans-serif;
-  font-size:11px; font-weight:500;
-  cursor:pointer; transition:all 0.12s;
+  border:1px solid rgba(255,255,255,.07);
+  background:transparent; color:rgba(255,255,255,.3);
+  font-family:-apple-system,sans-serif; font-size:11px; font-weight:500;
+  cursor:pointer; transition:all .12s;
   -webkit-tap-highlight-color:transparent;
 }
-.ov-chip.active {
-  background:rgba(255,149,0,0.1);
-  border-color:rgba(255,149,0,0.35);
-  color:var(--orange);
-}
+.ov-chip.active { background:rgba(255,149,0,.1); border-color:rgba(255,149,0,.35); color:var(--orange); }
 
 select {
-  background:rgba(255,255,255,0.04);
-  border:1px solid rgba(255,255,255,0.09);
-  color:rgba(255,255,255,0.65);
-  padding:8px 12px; border-radius:12px;
-  font-size:12px; width:100%;
+  background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09);
+  color:rgba(255,255,255,.65); padding:8px 32px 8px 12px;
+  border-radius:12px; font-size:12px; width:100%;
   font-family:'Courier New',monospace;
   -webkit-appearance:none; appearance:none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23555' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
-  background-repeat:no-repeat;
-  background-position:right 12px center;
-  padding-right:32px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23555' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 12px center;
 }
-
-.meta {
-  font-family:'Courier New',monospace;
-  color:rgba(255,255,255,0.18); font-size:10px; margin-top:4px;
-}
+.meta { font-family:'Courier New',monospace; color:rgba(255,255,255,.18); font-size:10px; margin-top:4px; }
 .meta span { color:var(--orange); }
-
 input[type=range] { accent-color:var(--orange); width:100%; }
 .fov-row { display:flex; align-items:center; gap:12px; }
 .fov-val { font-family:'Courier New',monospace; color:var(--orange); font-size:14px; min-width:40px; }
-.hint { font-family:-apple-system,sans-serif; color:rgba(255,255,255,0.15); font-size:10px; line-height:1.7; margin-top:4px; }
+.hint { font-family:-apple-system,sans-serif; color:rgba(255,255,255,.15); font-size:10px; line-height:1.7; margin-top:4px; }
 .fov-status { font-family:-apple-system,sans-serif; font-size:11px; font-weight:700; }
 </style>
 </head>
 <body>
 
-<!-- ── SPLASH ──────────────────────────────────────────── -->
+<!-- ── SPLASH ─────────────────────────────────────── -->
 <div id="splash">
   <div id="splashInner">
     <div id="splashOptical">OPTICAL</div>
@@ -320,25 +300,17 @@ input[type=range] { accent-color:var(--orange); width:100%; }
   </div>
 </div>
 
-<!-- ── APP ────────────────────────────────────────────── -->
+<!-- ── APP ───────────────────────────────────────── -->
 <div id="app" style="display:none">
   <video id="video" muted playsinline autoplay></video>
   <canvas id="canvas"></canvas>
+  <div id="shotFlash"></div>
 
-  <div id="topbar">
-    <div class="wordmark">
-      <span class="wm-o">OPTICAL</span>
-      <span class="wm-p">PRO</span>
-    </div>
-    <button class="icon-btn" onclick="flipCamera()">⇄</button>
-  </div>
-
+  <!-- Bottom bar -->
   <div id="bottomBar">
-    <div id="barHandle" onclick="togglePanel()">
-      <div id="handlePill"></div>
-    </div>
+    <div id="barHandle" onclick="openModal()"><div id="handlePill"></div></div>
     <div id="barContent">
-      <div id="barLeft" onclick="togglePanel()">
+      <div id="barLeft" onclick="openModal()">
         <div id="barCamName">—</div>
         <div id="barModeName">—</div>
       </div>
@@ -353,55 +325,62 @@ input[type=range] { accent-color:var(--orange); width:100%; }
       </div>
       <div id="barRight">
         <div id="barARLabel">—</div>
-        <button id="barMenuBtn" onclick="togglePanel()">≡</button>
+        <button class="bar-icon-btn" id="shotBtn" onclick="captureScreenshot()" title="Screenshot"></button>
+        <button class="bar-icon-btn" id="menuBtn" onclick="openModal()">≡</button>
       </div>
     </div>
   </div>
 
-  <div id="panel">
+  <!-- Backdrop -->
+  <div id="backdrop" onclick="closeModal()"></div>
+
+  <!-- Settings modal -->
+  <div id="modal">
+    <div id="modalHeader">
+      <span id="modalTitle">IMPOSTAZIONI</span>
+      <button id="modalClose" onclick="closeModal()">✕</button>
+    </div>
     <div class="tabs">
       <button class="tab-btn active" onclick="switchTab('camera',this)">CAMERA</button>
       <button class="tab-btn"        onclick="switchTab('lens',this)">LENS</button>
       <button class="tab-btn"        onclick="switchTab('overlay',this)">OVERLAY</button>
       <button class="tab-btn"        onclick="switchTab('fov',this)">FOV</button>
     </div>
-
-    <div class="tab-pane active" id="pane-camera">
-      <div class="row"><span class="lbl">Brand</span><div class="body chips" id="brandChips"></div></div>
-      <div class="row"><span class="lbl">Model</span><div class="body"><select id="camSel" onchange="onCamChange()"></select></div></div>
-      <div class="row"><span class="lbl">Mode</span> <div class="body"><select id="modeSel" onchange="onModeChange()"></select></div></div>
-      <div class="meta" id="sensorMeta"></div>
-    </div>
-
-    <div class="tab-pane" id="pane-lens">
-      <div class="row"><span class="lbl">Brand</span> <div class="body chips" id="lensBrandChips"></div></div>
-      <div class="row"><span class="lbl">Serie</span> <div class="body"><select id="seriesSel" onchange="onSeriesChange()"></select></div></div>
-      <div class="row"><span class="lbl">Focale</span><div class="body chips" id="focalChips"></div></div>
-      <div class="row"><span class="lbl">Ratio</span> <div class="body chips" id="arChips"></div></div>
-      <div class="meta" id="lensMeta"></div>
-    </div>
-
-    <div class="tab-pane" id="pane-overlay">
-      <div class="row"><span class="lbl">Layers</span><div class="body chips" id="overlayChips"></div></div>
-    </div>
-
-    <div class="tab-pane" id="pane-fov">
-      <div class="row" style="align-items:center;margin-bottom:8px">
-        <span class="lbl">Stato</span>
-        <span class="fov-status" id="fovStatus" style="color:#34c759">&#x25CF; AUTO</span>
+    <div id="modalBody">
+      <div class="tab-pane active" id="pane-camera">
+        <div class="row"><span class="lbl">Brand</span><div class="body chips" id="brandChips"></div></div>
+        <div class="row"><span class="lbl">Model</span><div class="body"><select id="camSel" onchange="onCamChange()"></select></div></div>
+        <div class="row"><span class="lbl">Mode</span> <div class="body"><select id="modeSel" onchange="onModeChange()"></select></div></div>
+        <div class="meta" id="sensorMeta"></div>
       </div>
-      <div class="row">
-        <span class="lbl">FOV</span>
-        <div class="body">
-          <div class="fov-row">
-            <input type="range" min="40" max="105" value="65" id="fovSlider" oninput="onFovChange()">
-            <span class="fov-val" id="fovVal">65&deg;</span>
+      <div class="tab-pane" id="pane-lens">
+        <div class="row"><span class="lbl">Brand</span> <div class="body chips" id="lensBrandChips"></div></div>
+        <div class="row"><span class="lbl">Serie</span> <div class="body"><select id="seriesSel" onchange="onSeriesChange()"></select></div></div>
+        <div class="row"><span class="lbl">Focale</span><div class="body chips" id="focalChips"></div></div>
+        <div class="row"><span class="lbl">Ratio</span> <div class="body chips" id="arChips"></div></div>
+        <div class="meta" id="lensMeta"></div>
+      </div>
+      <div class="tab-pane" id="pane-overlay">
+        <div class="row"><span class="lbl">Layers</span><div class="body chips" id="overlayChips"></div></div>
+      </div>
+      <div class="tab-pane" id="pane-fov">
+        <div class="row" style="align-items:center;margin-bottom:8px">
+          <span class="lbl">Stato</span>
+          <span class="fov-status" id="fovStatus" style="color:#34c759">&#x25CF; AUTO</span>
+        </div>
+        <div class="row">
+          <span class="lbl">FOV</span>
+          <div class="body">
+            <div class="fov-row">
+              <input type="range" min="40" max="105" value="65" id="fovSlider" oninput="onFovChange()">
+              <span class="fov-val" id="fovVal">65&deg;</span>
+            </div>
           </div>
         </div>
+        <div class="hint">Rilevato automaticamente. Regola se necessario.</div>
+        <div class="chips" style="margin-top:10px" id="fovPresets"></div>
+        <button class="chip" style="margin-top:10px" onclick="resetFovAuto()">&#x21BA;&nbsp;Auto-rileva</button>
       </div>
-      <div class="hint">Rilevato automaticamente dalla fotocamera.<br>Regola manualmente se necessario.</div>
-      <div class="chips" style="margin-top:10px" id="fovPresets"></div>
-      <button class="chip" style="margin-top:10px" onclick="resetFovAuto()">&#x21BA;&nbsp;Auto-rileva</button>
     </div>
   </div>
 </div>
@@ -491,6 +470,7 @@ const LENSES = {
     {name:"Sumire Prime",      type:"Prime",      format:"FF",    focals:[14,20,24,35,50,85,135]},
     {name:"CN-E Prime",        type:"Prime",      format:"S35",   focals:[14,24,35,50,85,135]},
     {name:"CN7x17 Cine-Servo", type:"Zoom",       format:"S35",   focals:[17,20,24,35,50,75,120]},
+    {name:"CN-E 30-300mm",     type:"Zoom",       format:"S35",   focals:[30,40,50,60,75,85,100,135,180,200,250,300]},
   ],
   "Sigma":[
     {name:"Cine FF High Speed",type:"Prime",      format:"FF",    focals:[14,20,24,35,40,50,85,105]},
@@ -522,25 +502,65 @@ const S = {
   brand:"ARRI", camIdx:0, modeIdx:0,
   lensCategory:"ARRI/Zeiss", seriesIdx:0, focalIdx:0,
   arIdx:3, phoneFOV:65, fovSource:"auto",
-  facingMode:"environment", panelOpen:false,
+  facingMode:"environment",
   overlays:{frame:true,frameLabel:true,safe:true,grid:false,cross:true,info:true,horizon:false},
 };
-
 const getCam    = () => CAMERAS[S.brand][S.camIdx];
 const getMode   = () => getCam().modes[S.modeIdx];
 const getSeries = () => LENSES[S.lensCategory][S.seriesIdx];
 const getFocal  = () => getSeries().focals[S.focalIdx];
 const getAR     = () => ASPECT_RATIOS[S.arIdx];
-const getHFOV   = () => 2 * Math.atan(getMode().w / (2 * getFocal())) * (180 / Math.PI);
+const getHFOV   = () => 2*Math.atan(getMode().w/(2*getFocal()))*(180/Math.PI);
 
-// ─── AUTO FOV DETECTION ───────────────────────────────────────────────────────
+// ─── LANDSCAPE LOCK ───────────────────────────────────────────────────────────
+const app    = document.getElementById('app');
+const video  = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const ctx    = canvas.getContext('2d');
+const BAR_H  = 70;
+
+// Returns current "virtual landscape" dimensions
+function getLandscapeDims() {
+  const vw = window.innerWidth, vh = window.innerHeight;
+  return vh > vw ? {W:vh, H:vw} : {W:vw, H:vh};
+}
+
+function applyLandscape() {
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const portrait = vh > vw;
+  if (portrait) {
+    app.style.width        = vh + 'px';
+    app.style.height       = vw + 'px';
+    app.style.top          = ((vh-vw)/2) + 'px';
+    app.style.left         = -((vh-vw)/2) + 'px';
+    app.style.transform    = 'rotate(90deg)';
+    app.style.transformOrigin = 'center center';
+  } else {
+    app.style.width  = '100%';
+    app.style.height = '100%';
+    app.style.top    = '0';
+    app.style.left   = '0';
+    app.style.transform    = 'none';
+    app.style.transformOrigin = '';
+  }
+  resizeCanvas();
+}
+
+function resizeCanvas() {
+  const {W, H} = getLandscapeDims();
+  canvas.width  = W;
+  canvas.height = H;
+}
+
+window.addEventListener('resize', applyLandscape);
+window.addEventListener('orientationchange', () => setTimeout(applyLandscape, 120));
+
+// ─── AUTO FOV ─────────────────────────────────────────────────────────────────
 function detectFOV(stream) {
-  const track = stream.getVideoTracks()[0];
-  if (!track) return;
+  const track = stream.getVideoTracks()[0]; if(!track) return;
   const label = (track.label||'').toLowerCase();
   const ua = navigator.userAgent;
   let v = null;
-
   if (/iphone|ipad/i.test(ua)) {
     if (label.includes('ultra wide')||label.includes('ultra-wide')) v=100;
     else if (label.includes('telephoto')||label.includes('tele'))   v=48;
@@ -548,148 +568,112 @@ function detectFOV(stream) {
     else if (label.includes('front')||label.includes('facetime'))   v=62;
   }
   if (!v && track.getCapabilities) {
-    try {
-      const c = track.getCapabilities();
-      if (c.zoom) v = (c.zoom.min||1) <= 0.6 ? 98 : 68;
-    } catch(e){}
+    try { const c=track.getCapabilities(); if(c.zoom) v=(c.zoom.min||1)<=0.6?98:68; } catch(e){}
   }
-  if (!v) v = /android/i.test(ua) ? 68 : 65;
-
-  S.phoneFOV = v;
-  S.fovSource = 'auto';
-  const sl = $('fovSlider'); if(sl) sl.value=v;
-  const fv = $('fovVal');    if(fv) fv.textContent=v+'°';
+  if (!v) v = /android/i.test(ua)?68:65;
+  S.phoneFOV=v; S.fovSource='auto';
+  const sl=$('fovSlider'); if(sl) sl.value=v;
+  const fv=$('fovVal');    if(fv) fv.textContent=v+'°';
   buildFovPresets(); updateFovStatus();
 }
 
 function updateFovStatus() {
   const el=$('fovStatus'); if(!el) return;
-  const auto = S.fovSource!=='manual';
-  el.textContent = auto ? '⬤ AUTO  '+S.phoneFOV+'°' : '⬤ MANUAL  '+S.phoneFOV+'°';
-  el.style.color = auto ? '#34c759' : '#FF9500';
+  const auto=S.fovSource!=='manual';
+  el.textContent=auto?'\u25CF AUTO  '+S.phoneFOV+'\u00b0':'\u25CF MANUAL  '+S.phoneFOV+'\u00b0';
+  el.style.color=auto?'#34c759':'#FF9500';
 }
 
 // ─── CAMERA STREAM ────────────────────────────────────────────────────────────
-const video  = document.getElementById('video');
-const canvas = document.getElementById('canvas');
-const ctx    = canvas.getContext('2d');
-const BAR_H  = 70;
-
-function resizeCanvas() {
-  canvas.width  = window.innerWidth;
-  canvas.height = window.innerHeight;
-}
-window.addEventListener('resize', resizeCanvas);
-resizeCanvas();
-
 async function startCamera() {
   try {
     if (video.srcObject) video.srcObject.getTracks().forEach(t=>t.stop());
     const stream = await navigator.mediaDevices.getUserMedia({
-      video:{facingMode:S.facingMode, width:{ideal:1920}, height:{ideal:1080}}
+      video:{facingMode:S.facingMode,width:{ideal:1920},height:{ideal:1080}}
     });
-    video.srcObject = stream;
-    video.play();
-    detectFOV(stream);
-  } catch(e) { console.error('Camera:', e); }
-}
-
-function flipCamera() {
-  S.facingMode = S.facingMode==='environment'?'user':'environment';
-  startCamera();
+    video.srcObject=stream; video.play(); detectFOV(stream);
+  } catch(e){ console.error('Camera:',e); }
 }
 
 // ─── DRAW ─────────────────────────────────────────────────────────────────────
-const OG = '#FF9500';
+const OG='#FF9500';
 
 function draw() {
-  const W = canvas.width, H = canvas.height;
+  const W=canvas.width, H=canvas.height;
   ctx.clearRect(0,0,W,H);
+  const ar=getAR(), cinemaFOV=getHFOV();
 
-  // Available area (above bottom bar)
-  const availH = H - BAR_H;
-  const ar = getAR();
-
-  // Frame: fills available area at correct AR
+  // Frame (fills available area above bar, at correct AR)
+  const availH=H-BAR_H;
   let fW=W, fH=fW/ar.value;
-  if (fH > availH) { fH=availH; fW=fH*ar.value; }
+  if(fH>availH){fH=availH;fW=fH*ar.value;}
   const fX=(W-fW)/2, fY=(availH-fH)/2;
 
   // Video zoom
-  const cinemaFOV = getHFOV();
-  const pRad = S.phoneFOV*Math.PI/180;
-  const cRad = cinemaFOV*Math.PI/180;
-  const vZoom = Math.tan(pRad/2)/Math.tan(cRad/2);
+  const vZoom=Math.tan(S.phoneFOV*Math.PI/360)/Math.tan(cinemaFOV*Math.PI/360);
 
   // Black BG
   ctx.fillStyle='#050505'; ctx.fillRect(0,0,W,H);
 
-  // Draw video (zoomed, clipped to frame)
-  if (video.readyState>=2) {
+  // Draw video clipped to frame
+  if(video.readyState>=2){
     const nW=video.videoWidth||W, nH=video.videoHeight||H;
-    const cov = Math.max(W/nW, H/nH);
-    const tot = cov*vZoom;
-    const dW=nW*tot, dH=nH*tot;
-    const dX=(W-dW)/2, dY=(H-dH)/2;
+    const cov=Math.max(W/nW,H/nH);
+    const dW=nW*cov*vZoom, dH=nH*cov*vZoom;
     ctx.save();
     ctx.beginPath(); ctx.rect(fX,fY,fW,fH); ctx.clip();
-    ctx.drawImage(video,dX,dY,dW,dH);
+    ctx.drawImage(video,(W-dW)/2,(H-dH)/2,dW,dH);
     ctx.restore();
   }
 
-  // Wide angle indicator (cinema FOV > phone FOV)
-  if (vZoom<1) {
+  // Wide angle indicator
+  if(vZoom<1){
     ctx.save();
     ctx.beginPath(); ctx.rect(fX,fY,fW,fH); ctx.clip();
-    ctx.fillStyle='rgba(255,149,0,0.03)'; ctx.fillRect(fX,fY,fW,fH);
-    const pW=fW*vZoom, pH=fH*vZoom;
-    const pX=fX+(fW-pW)/2, pY=fY+(fH-pH)/2;
-    ctx.setLineDash([5,5]); ctx.strokeStyle='rgba(255,149,0,0.3)'; ctx.lineWidth=1;
+    ctx.fillStyle='rgba(255,149,0,.03)'; ctx.fillRect(fX,fY,fW,fH);
+    const pW=fW*vZoom,pH=fH*vZoom,pX=fX+(fW-pW)/2,pY=fY+(fH-pH)/2;
+    ctx.setLineDash([5,5]); ctx.strokeStyle='rgba(255,149,0,.3)'; ctx.lineWidth=1;
     ctx.strokeRect(pX,pY,pW,pH); ctx.setLineDash([]);
-    ctx.font='bold 9px Courier New'; ctx.fillStyle='rgba(255,149,0,0.4)';
-    ctx.fillText('PHONE FOV  '+S.phoneFOV+'°', pX+6, pY-5);
+    ctx.font='bold 9px Courier New'; ctx.fillStyle='rgba(255,149,0,.45)';
+    ctx.fillText('PHONE FOV LIMIT  '+S.phoneFOV+'\u00b0',pX+6,pY-5);
     ctx.restore();
   }
 
   // Letterbox mask
-  ctx.fillStyle='rgba(0,0,0,0.88)';
-  if(fY>0){ ctx.fillRect(0,0,W,fY); ctx.fillRect(0,fY+fH,W,H-fY-fH); }
-  if(fX>0){ ctx.fillRect(0,fY,fX,fH); ctx.fillRect(fX+fW,fY,W-fX-fW,fH); }
+  ctx.fillStyle='rgba(0,0,0,.88)';
+  if(fY>0){ctx.fillRect(0,0,W,fY); ctx.fillRect(0,fY+fH,W,H-fY-fH);}
+  if(fX>0){ctx.fillRect(0,fY,fX,fH); ctx.fillRect(fX+fW,fY,W-fX-fW,fH);}
 
   // Frame line label
-  if (S.overlays.frameLabel&&fY>14) {
+  if(S.overlays.frameLabel&&fY>14){
     const lbl=ar.label+'  '+ar.name.toUpperCase();
     const fs=Math.max(9,Math.min(11,fW/50));
     ctx.font=`500 ${fs}px -apple-system,sans-serif`;
-    const tw=ctx.measureText(lbl).width;
-    const lx=fX+(fW-tw)/2, ly=fY-7;
-    ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(lx-5,ly-fs-1,tw+10,fs+5);
+    const tw=ctx.measureText(lbl).width, lx=fX+(fW-tw)/2, ly=fY-7;
+    ctx.fillStyle='rgba(0,0,0,.55)'; ctx.fillRect(lx-5,ly-fs-1,tw+10,fs+5);
     ctx.fillStyle=OG; ctx.fillText(lbl,lx,ly);
   }
 
-  // Frame + corner brackets
-  if (S.overlays.frame) {
-    ctx.strokeStyle=OG; ctx.lineWidth=1.5;
-    ctx.strokeRect(fX,fY,fW,fH);
-    const b=Math.min(fW,fH)*0.055; ctx.lineWidth=3;
+  // Frame + brackets
+  if(S.overlays.frame){
+    ctx.strokeStyle=OG; ctx.lineWidth=1.5; ctx.strokeRect(fX,fY,fW,fH);
+    const b=Math.min(fW,fH)*.055; ctx.lineWidth=3;
     [[fX,fY,1,1],[fX+fW,fY,-1,1],[fX,fY+fH,1,-1],[fX+fW,fY+fH,-1,-1]].forEach(([x,y,dx,dy])=>{
       ctx.beginPath(); ctx.moveTo(x,y+dy*b); ctx.lineTo(x,y); ctx.lineTo(x+dx*b,y); ctx.stroke();
     });
   }
 
   // Safe areas
-  if (S.overlays.safe) {
+  if(S.overlays.safe){
     ctx.setLineDash([4,4]); ctx.lineWidth=1;
-    ctx.strokeStyle='rgba(255,149,0,0.45)';
-    ctx.strokeRect(fX+fW*.05,fY+fH*.05,fW*.9,fH*.9);
-    ctx.strokeStyle='rgba(255,149,0,0.2)';
-    ctx.strokeRect(fX+fW*.1,fY+fH*.1,fW*.8,fH*.8);
+    ctx.strokeStyle='rgba(255,149,0,.45)'; ctx.strokeRect(fX+fW*.05,fY+fH*.05,fW*.9,fH*.9);
+    ctx.strokeStyle='rgba(255,149,0,.2)';  ctx.strokeRect(fX+fW*.1,fY+fH*.1,fW*.8,fH*.8);
     ctx.setLineDash([]);
   }
 
   // Grid
-  if (S.overlays.grid) {
-    ctx.strokeStyle='rgba(255,255,255,0.16)'; ctx.lineWidth=1;
+  if(S.overlays.grid){
+    ctx.strokeStyle='rgba(255,255,255,.16)'; ctx.lineWidth=1;
     [1,2].forEach(i=>{
       ctx.beginPath(); ctx.moveTo(fX+fW*i/3,fY); ctx.lineTo(fX+fW*i/3,fY+fH); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(fX,fY+fH*i/3); ctx.lineTo(fX+fW,fY+fH*i/3); ctx.stroke();
@@ -697,26 +681,25 @@ function draw() {
   }
 
   // Crosshair
-  if (S.overlays.cross) {
-    const cx=fX+fW/2,cy=fY+fH/2,r=Math.min(fW,fH)*0.038;
-    ctx.strokeStyle='rgba(255,149,0,0.8)'; ctx.lineWidth=1.5;
-    ctx.beginPath();ctx.moveTo(cx-r,cy);ctx.lineTo(cx-r*.25,cy);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(cx+r*.25,cy);ctx.lineTo(cx+r,cy);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(cx,cy-r);ctx.lineTo(cx,cy-r*.25);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(cx,cy+r*.25);ctx.lineTo(cx,cy+r);ctx.stroke();
+  if(S.overlays.cross){
+    const cx=fX+fW/2,cy=fY+fH/2,r=Math.min(fW,fH)*.038;
+    ctx.strokeStyle='rgba(255,149,0,.85)'; ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(cx-r,cy);ctx.lineTo(cx-r*.26,cy);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cx+r*.26,cy);ctx.lineTo(cx+r,cy);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cx,cy-r);ctx.lineTo(cx,cy-r*.26);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cx,cy+r*.26);ctx.lineTo(cx,cy+r);ctx.stroke();
     ctx.beginPath();ctx.arc(cx,cy,r*.1,0,Math.PI*2);ctx.stroke();
   }
 
   // Horizon
-  if (S.overlays.horizon) {
-    ctx.strokeStyle='rgba(255,200,80,0.4)'; ctx.lineWidth=1;
-    ctx.setLineDash([10,6]);
+  if(S.overlays.horizon){
+    ctx.strokeStyle='rgba(255,200,80,.4)'; ctx.lineWidth=1; ctx.setLineDash([10,6]);
     ctx.beginPath();ctx.moveTo(fX,fY+fH/2);ctx.lineTo(fX+fW,fY+fH/2);ctx.stroke();
     ctx.setLineDash([]);
   }
 
   // Info corners
-  if (S.overlays.info) {
+  if(S.overlays.info){
     const cam=getCam(),m=getMode(),f=getFocal();
     const fs=Math.max(9,Math.min(11,fW/52)),pad=8;
     ctx.font=`bold ${fs}px 'Courier New',monospace`; ctx.fillStyle=OG;
@@ -732,9 +715,61 @@ function draw() {
   requestAnimationFrame(draw);
 }
 
-// ─── UI BUILDERS ─────────────────────────────────────────────────────────────
-const $ = id => document.getElementById(id);
+// ─── SCREENSHOT ───────────────────────────────────────────────────────────────
+function captureScreenshot() {
+  const W=canvas.width, H=canvas.height;
+  const ar=getAR(), availH=H-BAR_H;
+  let fW=W, fH=fW/ar.value;
+  if(fH>availH){fH=availH;fW=fH*ar.value;}
+  const fX=(W-fW)/2, fY=(availH-fH)/2;
 
+  // Temp canvas: frame + metadata strip
+  const metaH=32;
+  const tmp=document.createElement('canvas');
+  tmp.width=Math.round(fW); tmp.height=Math.round(fH)+metaH;
+  const tc=tmp.getContext('2d');
+
+  // Copy frame from main canvas
+  tc.drawImage(canvas,fX,fY,fW,fH,0,0,fW,fH);
+
+  // Metadata strip
+  const cam=getCam(),m=getMode(),s=getSeries(),f=getFocal();
+  tc.fillStyle='rgba(0,0,0,.88)';
+  tc.fillRect(0,Math.round(fH),Math.round(fW),metaH);
+  tc.font='bold 11px Courier New'; tc.fillStyle=OG;
+
+  const left=`${S.brand} ${cam.model}  ${m.name}`;
+  const center=`${s.name}  ${f}mm  ${getHFOV().toFixed(1)}\u00b0`;
+  const right=`${ar.label}  ${m.w}\u00d7${m.h}mm`;
+
+  tc.textBaseline='middle';
+  const y=Math.round(fH)+metaH/2;
+  tc.fillText(left,10,y);
+  const cw=tc.measureText(center).width;
+  tc.fillText(center,(fW-cw)/2,y);
+  const rw=tc.measureText(right).width;
+  tc.fillText(right,fW-rw-10,y);
+
+  // Flash feedback
+  const flash=document.getElementById('shotFlash');
+  flash.classList.add('show');
+  setTimeout(()=>flash.classList.remove('show'),180);
+
+  // Download
+  const now=new Date();
+  const ts=`${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
+  const fname=`opticalpro_${S.brand}_${f}mm_${ar.label.replace(':','x')}_${ts}.jpg`;
+  const a=document.createElement('a');
+  a.href=tmp.toDataURL('image/jpeg',.93);
+  a.download=fname; a.click();
+}
+
+// ─── MODAL ────────────────────────────────────────────────────────────────────
+function openModal()  { $('modal').classList.add('open'); $('backdrop').classList.add('open'); }
+function closeModal() { $('modal').classList.remove('open'); $('backdrop').classList.remove('open'); }
+
+// ─── UI BUILDERS ─────────────────────────────────────────────────────────────
+const $=id=>document.getElementById(id);
 function buildBrandChips(){$('brandChips').innerHTML=Object.keys(CAMERAS).map(b=>`<button class="chip${b===S.brand?' active':''}" onclick="setBrand('${b}')">${b}</button>`).join('');}
 function buildCamSel(){$('camSel').innerHTML=CAMERAS[S.brand].map((c,i)=>`<option value="${i}"${i===S.camIdx?' selected':''}>${c.model} (${c.year})</option>`).join('');}
 function buildModeSel(){$('modeSel').innerHTML=getCam().modes.map((m,i)=>`<option value="${i}"${i===S.modeIdx?' selected':''}>${m.name}  ${m.res}</option>`).join('');}
@@ -744,17 +779,14 @@ function buildSeriesSel(){$('seriesSel').innerHTML=LENSES[S.lensCategory].map((s
 function buildFocalChips(){$('focalChips').innerHTML=getSeries().focals.map((f,i)=>`<button class="chip${i===S.focalIdx?' active':''}" onclick="setFocalIdx(${i})">${f}</button>`).join('');}
 function buildARChips(){$('arChips').innerHTML=ASPECT_RATIOS.map((a,i)=>`<button class="chip${i===S.arIdx?' active':''}" onclick="setAR(${i})">${a.label}</button>`).join('');}
 function buildLensMeta(){const m=getMode();$('lensMeta').innerHTML=`HFOV <span>${getHFOV().toFixed(1)}\u00b0</span>  &nbsp; Sensore <span>${m.w}\u00d7${m.h}mm</span>`;}
-
 function buildOverlayChips(){
   const defs=[{k:'frame',l:'Frame'},{k:'frameLabel',l:'Frame Line'},{k:'safe',l:'Safe Area'},{k:'grid',l:'Grid 3\u00d73'},{k:'cross',l:'Crosshair'},{k:'info',l:'Info'},{k:'horizon',l:'Horizon'}];
   $('overlayChips').innerHTML=defs.map(d=>`<button class="ov-chip${S.overlays[d.k]?' active':''}" onclick="toggleOv('${d.k}')">${d.l}</button>`).join('');
 }
-
 function buildFovPresets(){
   const p=[['iPhone Wide',65],['iPhone UW',100],['iPhone 2x',48],['Android',68]];
   $('fovPresets').innerHTML=p.map(([l,v])=>`<button class="chip${S.phoneFOV===v?' active':''}" style="font-size:10px" onclick="setFovPreset(${v})">${l}</button>`).join('');
 }
-
 function updateBar(){
   const cam=getCam(),m=getMode(),s=getSeries(),f=getFocal(),ar=getAR();
   $('barCamName').textContent=`${S.brand} ${cam.model}`;
@@ -763,9 +795,8 @@ function updateBar(){
   $('navFocalNum').textContent=f;
   $('barARLabel').textContent=ar.label;
   $('btnPrev').disabled=S.focalIdx===0;
-  $('btnNext').disabled=S.focalIdx===s.focals.length-1;
+  $('btnNext').disabled=S.focalIdx===getSeries().focals.length-1;
 }
-
 function buildAll(){
   buildBrandChips();buildCamSel();buildModeSel();buildSensorMeta();
   buildLensBrandChips();buildSeriesSel();buildFocalChips();buildARChips();buildLensMeta();
@@ -778,7 +809,6 @@ function switchTab(name,btn){
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   $('pane-'+name).classList.add('active'); btn.classList.add('active');
 }
-function togglePanel(e){if(e)e.stopPropagation();S.panelOpen=!S.panelOpen;$('panel').classList.toggle('open',S.panelOpen);}
 function setBrand(b){S.brand=b;S.camIdx=0;S.modeIdx=0;buildBrandChips();buildCamSel();buildModeSel();buildSensorMeta();buildLensMeta();updateBar();}
 function onCamChange(){S.camIdx=+$('camSel').value;S.modeIdx=0;buildModeSel();buildSensorMeta();buildLensMeta();updateBar();}
 function onModeChange(){S.modeIdx=+$('modeSel').value;buildSensorMeta();buildLensMeta();updateBar();}
@@ -789,21 +819,23 @@ function prevFocalEv(e){e.stopPropagation();if(S.focalIdx>0){S.focalIdx--;buildF
 function nextFocalEv(e){e.stopPropagation();const s=getSeries();if(S.focalIdx<s.focals.length-1){S.focalIdx++;buildFocalChips();buildLensMeta();updateBar();}}
 function setAR(i){S.arIdx=i;buildARChips();updateBar();}
 function toggleOv(k){S.overlays[k]=!S.overlays[k];buildOverlayChips();}
-function onFovChange(){S.phoneFOV=+$('fovSlider').value;S.fovSource='manual';$('fovVal').textContent=S.phoneFOV+'°';buildFovPresets();updateFovStatus();}
-function setFovPreset(v){S.phoneFOV=v;S.fovSource='manual';$('fovSlider').value=v;$('fovVal').textContent=v+'°';buildFovPresets();updateFovStatus();}
+function onFovChange(){S.phoneFOV=+$('fovSlider').value;S.fovSource='manual';$('fovVal').textContent=S.phoneFOV+'\u00b0';buildFovPresets();updateFovStatus();}
+function setFovPreset(v){S.phoneFOV=v;S.fovSource='manual';$('fovSlider').value=v;$('fovVal').textContent=v+'\u00b0';buildFovPresets();updateFovStatus();}
 function resetFovAuto(){if(video.srcObject)detectFOV(video.srcObject);}
 
-// ─── SPLASH ───────────────────────────────────────────────────────────────────
-function startApp(){
-  document.getElementById('app').style.display='block';
-  buildAll(); startCamera(); draw();
-}
-
-(function initSplash(){
+// ─── SPLASH → APP ─────────────────────────────────────────────────────────────
+(function(){
   const splash=document.getElementById('splash');
-  setTimeout(()=>splash.classList.add('rotate'),   2000);
-  setTimeout(()=>splash.classList.add('fade'),      3100);
-  setTimeout(()=>{ splash.style.display='none'; startApp(); }, 3900);
+  setTimeout(()=>splash.classList.add('rotate'), 2000);
+  setTimeout(()=>splash.classList.add('fade'),   3100);
+  setTimeout(()=>{
+    splash.style.display='none';
+    app.style.display='block';
+    applyLandscape();
+    buildAll();
+    startCamera();
+    draw();
+  }, 3900);
 })();
 </script>
 </body>
