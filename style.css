@@ -34,7 +34,7 @@ body{-webkit-tap-highlight-color:transparent;touch-action:none;}
 #sModeName{font-family:'Courier New',monospace;font-size:8px;color:rgba(255,255,255,.4);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:76px;margin-top:2px;}
 
 /* Focal nav */
-#sideFocal{width: 100%;display:flex;flex-direction:column;align-items:center;flex:1;justify-content:center;padding:0px; margin-bottom: -11px;}
+#sideFocal{width: 100%;display:flex;flex-direction:column;align-items:center;flex:1;justify-content:center;padding:0px; margin-bottom: -21px;}
 #sSeriesName{font-family:'Courier New',monospace;font-size:8px;color:rgba(255,255,255,.4);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:76px;margin-bottom:4px;margin-top:-33px; letter-spacing:.3px;}
 .s-arrow{background:transparent;border:none;color:var(--orange);font-size:41px;line-height:1;cursor:pointer;padding:6px 0;-webkit-tap-highlight-color:transparent;transition:opacity .1s,transform .1s;opacity:.8;width:100%;text-align:center;}
 .s-arrow:disabled{opacity:.15;cursor:default;}
