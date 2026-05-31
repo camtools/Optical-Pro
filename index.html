@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+<title>Optical Pro</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash">
+  <div id="splashInner">
+    <div id="splashOptical">OPTICAL</div>
+    <div id="splashPro">PRO</div>
+    <!-- <div id="splashBar"></div> -->
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none">
+  <video id="video" muted playsinline autoplay></video>
+  <canvas id="canvas"></canvas>
+  <div id="shotFlash"></div>
+  <div id="memoryFull">Memoria piena<br><span>Elimina foto o video dalla galleria</span></div>
+
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div class="s-sec"><button id="sMenuBtn" onclick="openSettings()">≡</button></div>
+    <div class="s-div"></div>
+    <div class="s-sec">
+      <div id="sCamName">—</div>
+      <div id="sModeName">—</div>
+    </div>
+
+    <div id="sideFocal">
+
+      <div id="sSeriesName">—</div>
+                <div class="s-div"></div>
+      <div id="focalControl">
+        <button class="s-arrow" id="btnNext" onclick="nextFocalEv(event)">▲</button>
+        <span id="sNavFocalNum">—</span>
+        <span id="sNavFocalUnit">mm</span>
+        <button class="s-arrow" id="btnPrev" onclick="prevFocalEv(event)">▼</button>
+      </div>
+    </div>
+    <div class="s-div"></div>
+    <div class="s-sec">
+      <div id="shotRecRow">
+        <button id="shotBtn" onclick="captureScreenshot()" title="Screenshot"><div id="shotRing"></div></button>
+        <button id="recBtn"  onclick="toggleRecording()"   title="Registra"><div id="recRing"><div id="recDot"></div></div></button>
+      </div>
+    </div>
+    <div class="s-div"></div>
+    <div class="s-sec">
+      <div id="gallContainer" class="empty" onclick="openGallery()">
+        <img id="gallThumb" src="" alt="">
+        <div id="gallCount"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="backdrop" id="settBack" onclick="closeSettings()"></div>
+  <div class="modal" id="settModal">
+    <div class="modal-hdr">
+      <span class="modal-ttl">IMPOSTAZIONI</span>
+      <button class="modal-x" onclick="closeSettings()"><span class="modal-x-icon">✕</span></button>
+    </div>
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('camera',this)">CAMERA</button>
+      <button class="tab-btn"        onclick="switchTab('lens',this)">LENS</button>
+      <button class="tab-btn"        onclick="switchTab('ratio',this)">ASPECT</button>
+      <button class="tab-btn"        onclick="switchTab('overlay',this)">OVERLAY</button>
+      <button class="tab-btn"        onclick="switchTab('fov',this)">FOV</button>
+    </div>
+    <div class="modal-body">
+      <div class="tab-pane active" id="pane-camera">
+        <div class="row"><span class="lbl">Brand</span><div class="body chips" id="brandChips"></div></div>
+        <div class="row"><span class="lbl">Model</span><div class="body"><select id="camSel" onchange="onCamChange()"></select></div></div>
+        <div class="row"><span class="lbl">Mode</span><div class="body"><select id="modeSel" onchange="onModeChange()"></select></div></div>
+        <div class="meta" id="sensorMeta"></div>
+      </div>
+      <div class="tab-pane" id="pane-lens">
+        <div class="row"><span class="lbl">Brand</span><div class="body chips" id="lensBrandChips"></div></div>
+        <div class="row"><span class="lbl">Serie</span><div class="body"><select id="seriesSel" onchange="onSeriesChange()"></select></div></div>
+        <div class="row"><span class="lbl">Focale</span><div class="body chips" id="focalChips"></div></div>
+        <div class="meta" id="lensMeta"></div>
+      </div>
+      <div class="tab-pane" id="pane-ratio">
+        <div class="row"><span class="lbl">Ratio</span><div class="body chips" id="arChips"></div></div>
+      </div>
+      <div class="tab-pane" id="pane-overlay">
+        <div class="row"><span class="lbl">Layers</span><div class="body chips" id="overlayChips"></div></div>
+      </div>
+      <div class="tab-pane" id="pane-fov">
+        <div class="row" style="align-items:center;margin-bottom:8px">
+          <span class="lbl">Stato</span>
+          <span class="fov-status" id="fovStatus" style="color:#34c759">&#x25CF; AUTO</span>
+        </div>
+        <div class="row">
+          <span class="lbl">FOV</span>
+          <div class="body"><div class="fov-row"><input type="range" min="40" max="105" value="65" id="fovSlider" oninput="onFovChange()"><span class="fov-val" id="fovVal">65&deg;</span></div></div>
+        </div>
+        <div class="hint">Rilevato automaticamente. Regola se necessario.</div>
+        <div class="chips" style="margin-top:10px" id="fovPresets"></div>
+        <button class="chip" style="margin-top:10px" onclick="resetFovAuto()">&#x21BA;&nbsp;Auto-rileva</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- GALLERY -->
+  <div class="backdrop" id="gallBack" onclick="closeGallery()"></div>
+  <div class="modal" id="gallModal" style="max-height:80vh">
+    <div class="modal-hdr">
+      <span class="modal-ttl">GALLERY</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span id="gallTotal" style="font-family:'Courier New',monospace;font-size:10px;color:rgba(255,255,255,.25)"></span>
+        <button class="modal-x" onclick="closeGallery()"><span class="modal-x-icon">✕</span></button>
+      </div>
+    </div>
+    <div class="gall-tabs">
+      <button class="gall-tab active" id="gallTabFoto" onclick="switchGallTab('foto',this)">FOTO</button>
+      <button class="gall-tab"        id="gallTabVideo" onclick="switchGallTab('video',this)">VIDEO</button>
+    </div>
+    <div id="gallGrid"></div>
+  </div>
+
+  <!-- VIEWER -->
+  <div id="viewerWrap">
+    <div id="viewerHdr">
+      <div id="viewerMeta"></div>
+      <div id="viewerHdrBtns">
+        <button class="vhdr-btn" onclick="saveCurrentItem()">&#x2193; Salva</button>
+        <button class="vhdr-btn vhdr-del" onclick="deleteCurrentItem()">&#x1F5D1;</button>
+        <button class="vhdr-btn" onclick="closeViewer()">&#x2715;</button>
+      </div>
+    </div>
+    <div id="viewerImgWrap"
+      ontouchstart="onVTouchStart(event)"
+      ontouchend="onVTouchEnd(event)">
+      <img id="viewerImg" src="" alt="" style="max-width:100%;max-height:100%;object-fit:contain;pointer-events:none;">
+      <video id="viewerVid" controls playsinline style="display:none;max-width:100%;max-height:100%;outline:none;background:#000;"></video>
+      <button id="viewerPrevBtn" onclick="viewerStep(-1)">&#x2039;</button>
+      <button id="viewerNextBtn" onclick="viewerStep(1)">&#x203A;</button>
+      <div id="viewerCounter"></div>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<script src="script.js"></script>
+</body>
+</html>
