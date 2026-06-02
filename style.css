@@ -30,17 +30,18 @@ body{-webkit-tap-highlight-color:transparent;touch-action:none;}
 .s-div{width:44px;height:1px;background:rgba(255,255,255,.2);margin:3px 0;flex-shrink:0;}
 
 /* Cam info */
-#sCamName{font-family:'Courier New',monospace;font-size:10px;font-weight:bold;color:rgba(255,255,255,.65);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:76px;}
-#sModeName{font-family:'Courier New',monospace;font-size:8px;color:rgba(255,255,255,.4);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:76px;margin-top:2px;}
+#sCamName{font-family:'Courier New',monospace;font-size:10px;font-weight:bold;color:rgba(255,255,255,.8);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:76px;}
+#sModeName{font-family:'Courier New',monospace;font-size:8px;color:rgba(255,255,255,.8);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:76px;margin-top:2px;}
 
 /* Focal nav */
-#sideFocal{width: 100%;display:flex;flex-direction:column;align-items:center;flex:1;justify-content:center;padding:0px; margin-bottom: -21px;}
-#sSeriesName{font-family:'Courier New',monospace;font-size:8px;color:rgba(255,255,255,.4);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:76px;margin-bottom:4px;margin-top:-33px; letter-spacing:.3px;}
+#sideFocal{position:relative;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;}
+#sideFocal>.s-div{position:absolute;top:22px;}
+#sSeriesName{position:absolute;top:6px;font-family:'Courier New',monospace;font-size:8px;color:rgba(255,255,255,.8);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:76px;letter-spacing:.3px;}
 .s-arrow{background:transparent;border:none;color:var(--orange);font-size:41px;line-height:1;cursor:pointer;padding:6px 0;-webkit-tap-highlight-color:transparent;transition:opacity .1s,transform .1s;opacity:.8;width:100%;text-align:center;}
 .s-arrow:disabled{opacity:.15;cursor:default;}
 .s-arrow:active:not(:disabled){opacity:1;transform:scale(.82);}
 #focalControl{display:flex;flex-direction:column;align-items:center;}
-#sNavFocalNum{font-family:'Courier New',monospace;font-size:40px;font-weight:bold;color:#fff;letter-spacing:-1px;line-height:0.8;}
+#sNavFocalNum{font-family:'Courier New',monospace;font-size:45px;font-weight:bold;color:#fff;letter-spacing:-1px;line-height:0.8;}
 #sNavFocalUnit{font-family:'Courier New',monospace;font-size:12px;color:rgba(255,255,255,.3);margin-top:2px; margin-bottom:-4px;}
 
 /* Shot + Rec */
@@ -92,6 +93,9 @@ body{-webkit-tap-highlight-color:transparent;touch-action:none;}
 .chip.active{background:var(--orange);border-color:var(--orange);color:#000;font-weight:700;}
 .ov-chip{padding:7px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.5);background:transparent;color:rgba(255,255,255,.5);font-family:-apple-system,sans-serif;font-size:11px;font-weight:500;cursor:pointer;transition:all .12s;-webkit-tap-highlight-color:transparent;}
 .ov-chip.active{background:rgba(255,149,0,.1);border-color:rgba(255,149,0,.35);color:var(--orange);}
+.color-chip{width:26px;height:26px;border-radius:6px;border:2px solid transparent;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:border-color .12s,transform .1s;flex-shrink:0;}
+.color-chip.active{border-color:#fff;transform:scale(1.15);}
+.color-chip:active{transform:scale(.9);}
 select{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.5);color:rgba(255,255,255,.6);padding:8px 32px 8px 12px;border-radius:12px;font-size:12px;width:100%;font-family:'Courier New',monospace;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23555' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;}
 .meta{font-family:'Courier New',monospace;color:rgba(255,255,255,.18);font-size:10px;margin-top:4px;}
 .meta span{color:var(--orange);}
