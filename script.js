@@ -105,7 +105,8 @@ const S={
   brand:"ARRI",camIdx:0,modeIdx:0,
   lensCategory:"ARRI/Zeiss",seriesIdx:0,focalIdx:0,
   arIdx:3,phoneFOV:65,fovSource:"auto",facingMode:"environment",
-  overlays:{frame:true,frameLabel:false,safe:false,grid:false,cross:false,camera:true,lens:true,lensType:false,ar:true,horizon:false}
+  overlays:{frame:true,frameLabel:false,safe:false,grid:false,cross:false,camera:true,lens:true,lensType:false,ar:true,horizon:false},
+  overlayColor:'#FF9500'
 };
 const getCam    =()=>CAMERAS[S.brand][S.camIdx];
 const getMode   =()=>getCam().modes[S.modeIdx];
@@ -121,7 +122,7 @@ function saveSettings(){
       brand:S.brand,camIdx:S.camIdx,modeIdx:S.modeIdx,
       lensCategory:S.lensCategory,seriesIdx:S.seriesIdx,focalIdx:S.focalIdx,
       arIdx:S.arIdx,phoneFOV:S.phoneFOV,fovSource:S.fovSource,
-      overlays:{...S.overlays}
+      overlays:{...S.overlays},overlayColor:S.overlayColor
     }));
   }catch(e){}
 }
@@ -144,6 +145,7 @@ function loadSettings(){
     if(d.arIdx>=0&&d.arIdx<ASPECT_RATIOS.length)S.arIdx=d.arIdx;
     if(d.phoneFOV>=40&&d.phoneFOV<=105){S.phoneFOV=d.phoneFOV;S.fovSource=d.fovSource||'auto';}
     if(d.overlays)S.overlays={...S.overlays,...d.overlays};
+    if(d.overlayColor){S.overlayColor=d.overlayColor;OG=d.overlayColor;}
   }catch(e){}
 }
 
@@ -446,7 +448,7 @@ function fmtDur(s){return`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s
 
 
 // ─── DRAW ─────────────────────────────────────────────────────────────────────
-const OG='#FF9500';
+let OG='#FF9500';
 
 function getFrameRect(){
   const logW=canvas.width/DPR,logH=canvas.height/DPR,ar=getAR();
@@ -802,8 +804,25 @@ function buildSeriesSel(){$('seriesSel').innerHTML=LENSES[S.lensCategory].map((s
 function buildFocalChips(){$('focalChips').innerHTML=getSeries().focals.map((f,i)=>`<button class="chip${i===S.focalIdx?' active':''}" onclick="setFocalIdx(${i})">${f}</button>`).join('');}
 function buildARChips(){$('arChips').innerHTML=ASPECT_RATIOS.map((a,i)=>`<button class="chip${i===S.arIdx?' active':''}" onclick="setAR(${i})">${a.label}</button>`).join('');}
 function buildLensMeta(){const m=getMode();$('lensMeta').innerHTML=`HFOV <span>${getHFOV().toFixed(1)}°</span>  &nbsp; Sensore <span>${m.w}×${m.h}mm</span>`;}
+const OVERLAY_COLORS=[
+  {l:'Bianco',  c:'#FFFFFF'},
+  {l:'Verde',   c:'#30D158'},
+  {l:'Blu',     c:'#0A84FF'},
+  {l:'Rosso',   c:'#FF3B30'},
+  {l:'Giallo',  c:'#FFD60A'},
+  {l:'Arancione',c:'#FF9500'},
+  {l:'Viola',   c:'#BF5AF2'},
+  {l:'Rosa',    c:'#FF375F'},
+];
+function buildColorChips(){
+  $('colorChips').innerHTML=OVERLAY_COLORS.map(({l,c})=>
+    `<button class="color-chip${S.overlayColor===c?' active':''}" style="background:${c}" title="${l}" onclick="setOverlayColor('${c}')"></button>`
+  ).join('');
+}
+function setOverlayColor(c){S.overlayColor=c;OG=c;buildColorChips();saveSettings();}
+
 function buildOverlayChips(){
-  const defs=[{k:'frame',l:'Frame'},{k:'frameLabel',l:'Frame Line'},{k:'safe',l:'Safe Area'},{k:'grid',l:'Grid 3×3'},{k:'cross',l:'Crosshair'},{k:'horizon',l:'Horizon'},{k:'camera',l:'Camera'},{k:'lens',l:'Lens'},{k:'ar',l:'A. Ratio'}];
+  const defs=[{k:'frame',l:'Frame'},{k:'camera',l:'Camera'},{k:'lens',l:'Lens'},{k:'ar',l:'A. Ratio'},{k:'safe',l:'Safe Area'},{k:'grid',l:'Grid 3×3'},{k:'cross',l:'Cross'},];
   $('overlayChips').innerHTML=defs.map(d=>`<button class="ov-chip${S.overlays[d.k]?' active':''}" onclick="toggleOv('${d.k}')">${d.l}</button>`).join('');
 }
 function buildFovPresets(){
@@ -822,7 +841,7 @@ function updateSidebar(){
 function buildAll(){
   buildBrandChips();buildCamSel();buildModeSel();buildSensorMeta();
   buildLensBrandChips();buildSeriesSel();buildFocalChips();buildARChips();buildLensMeta();
-  buildOverlayChips();buildFovPresets();updateFovStatus();updateSidebar();
+  buildOverlayChips();buildColorChips();buildFovPresets();updateFovStatus();updateSidebar();
   const sl=$('fovSlider');if(sl)sl.value=S.phoneFOV;
   const fv=$('fovVal');if(fv)fv.textContent=S.phoneFOV+'°';
 }
