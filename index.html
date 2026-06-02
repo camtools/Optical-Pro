@@ -7,7 +7,6 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="icon" href="icon.png">
-<link rel="manifest" href="manifest.json">
 <title>Optical Pro</title>
 <link rel="stylesheet" href="style.css">
 </head>
@@ -45,7 +44,7 @@
       <div id="focalControl">
         <button class="s-arrow" id="btnNext" onclick="nextFocalEv(event)">▲</button>
         <span id="sNavFocalNum">—</span>
-        <span id="sNavFocalUnit">mm</span>
+        <!--<span id="sNavFocalUnit">mm</span> -->
         <button class="s-arrow" id="btnPrev" onclick="prevFocalEv(event)">▼</button>
       </div>
     </div>
@@ -69,7 +68,7 @@
   <div class="backdrop" id="settBack" onclick="closeSettings()"></div>
   <div class="modal" id="settModal">
     <div class="modal-hdr">
-      <span class="modal-ttl">IMPOSTAZIONI</span>
+      <span class="modal-ttl">SETTINGS</span>
       <button class="modal-x" onclick="closeSettings()"><span class="modal-x-icon">✕</span></button>
     </div>
     <div class="tabs">
@@ -89,7 +88,7 @@
       <div class="tab-pane" id="pane-lens">
         <div class="row"><span class="lbl">Brand</span><div class="body chips" id="lensBrandChips"></div></div>
         <div class="row"><span class="lbl">Serie</span><div class="body"><select id="seriesSel" onchange="onSeriesChange()"></select></div></div>
-        <div class="row"><span class="lbl">Focale</span><div class="body chips" id="focalChips"></div></div>
+        <div class="row"><span class="lbl">Focal</span><div class="body chips" id="focalChips"></div></div>
         <div class="meta" id="lensMeta"></div>
       </div>
       <div class="tab-pane" id="pane-ratio">
@@ -97,6 +96,7 @@
       </div>
       <div class="tab-pane" id="pane-overlay">
         <div class="row"><span class="lbl">Layers</span><div class="body chips" id="overlayChips"></div></div>
+        <div class="row"><span class="lbl">Color</span><div class="body chips" id="colorChips"></div></div>
       </div>
       <div class="tab-pane" id="pane-fov">
         <div class="row" style="align-items:center;margin-bottom:8px">
@@ -155,9 +155,5 @@
 </div><!-- /app -->
 
 <script src="script.js"></script>
-<script>
-  if('serviceWorker' in navigator)
-    navigator.serviceWorker.register('./sw.js');
-</script>
 </body>
 </html>
