@@ -30,55 +30,65 @@ const CAMERAS={ARRI:[
   {model:"GEMINI 5K S35",    year:2018,modes:[{name:"5K S35",w:30.72,h:18.00,res:"5120×3000"},{name:"4K S35",w:30.72,h:18.00,res:"4096×2400"}]},
 ]};
 
-const LENSES={"ARRI/Zeiss":[
+const LENSES={
+  "Angénieux":[
+  {name:"Optimo 15-40",      type:"Zoom",       format:"S35",   focals:[15,17,20,24,28,32,35,40]},
+  {name:"Optimo 24-290",     type:"Zoom",       format:"S35",   focals:[24,35,50,65,75,100,135,180,240,290]},
+  {name:"EZ-1 30-90",        type:"Zoom",       format:"LF",    focals:[30,35,40,50,60,70,80,90]},
+  {name:"EZ-2 22-60",        type:"Zoom",       format:"LF",    focals:[22,25,30,35,40,45,50,55,60]},
+],
+  "ARRI/Zeiss":[
   {name:"Master Prime",      type:"Prime",      format:"S35",   focals:[12,14,16,18,21,25,27,32,35,40,50,65,75,100,135,150]},
   {name:"Ultra Prime",       type:"Prime",      format:"S35",   focals:[8,10,12,14,16,20,24,28,32,40,50,65,85,100,135,180]},
   {name:"Signature Prime",   type:"Prime",      format:"LF",    focals:[12,15,18,21,25,29,35,40,47,58,75,95,125,150,200,280]},
   {name:"Sig. Zoom 16-32",   type:"Zoom",       format:"LF",    focals:[16,18,20,22,24,26,28,30,32]},
   {name:"Sig. Zoom 45-135",  type:"Zoom",       format:"LF",    focals:[45,50,60,70,80,90,100,110,120,135]},
   {name:"Master Zoom 16-110",type:"Zoom",       format:"S35",   focals:[16,18,21,24,28,32,35,40,50,65,75,85,100,110]},
-],"Cooke":[
+],
+  "Atlas":[
+  {name:"Orion Ana. 2x",     type:"Anamorphic", format:"S35",   focals:[32,40,50,65,80]},
+  {name:"Mercury Ana. 1.5x", type:"Anamorphic", format:"LF",    focals:[24,32,40,50,65]},
+],
+  "Canon":[
+  {name:"Sumire Prime",      type:"Prime",      format:"FF",    focals:[14,20,24,35,50,85,135]},
+  {name:"CN-E Prime",        type:"Prime",      format:"S35",   focals:[14,24,35,50,85,135]},
+  {name:"CN7x17 Cine-Servo", type:"Zoom",       format:"S35",   focals:[17,20,24,35,50,75,120]},
+  {name:"CN-E 30-300mm",     type:"Zoom",       format:"S35",   focals:[30,40,50,60,75,85,100,135,180,200,250,300]},
+],
+  "Cooke":[
   {name:"S4/i",              type:"Prime",      format:"S35",   focals:[12,14,16,18,21,25,27,32,35,40,50,65,75,100,135,150,180]},
   {name:"S7/i",              type:"Prime",      format:"LF/FF", focals:[18,25,32,40,50,65,75,100,135]},
   {name:"miniS4/i",          type:"Prime",      format:"S35",   focals:[18,21,25,32,40,50,65,75,100,135]},
   {name:"Panchro/i Classic", type:"Prime",      format:"S35",   focals:[18,25,32,50,75,100]},
   {name:"Anamorphic/i SF",   type:"Anamorphic", format:"S35",   focals:[32,40,50,65,75,100,135,180]},
-],"Zeiss":[
-  {name:"Supreme Prime",     type:"Prime",      format:"LF/FF", focals:[18,21,25,29,35,40,50,65,85,100,135,150,200]},
-  {name:"Supreme Radiance",  type:"Prime",      format:"LF/FF", focals:[18,21,25,29,35,40,50,65,85,100,135,150,200]},
-  {name:"CP.3",              type:"Prime",      format:"S35",   focals:[15,18,21,25,28,35,50,85,100,135]},
-],"Leica":[
-  {name:"Summicron-C",       type:"Prime",      format:"S35",   focals:[18,21,25,29,35,40,50,75,100,135]},
-  {name:"Thalia",            type:"Prime",      format:"LF",    focals:[24,30,35,45,55,70,90,120,180]},
-],"Angénieux":[
-  {name:"Optimo 15-40",      type:"Zoom",       format:"S35",   focals:[15,17,20,24,28,32,35,40]},
-  {name:"Optimo 24-290",     type:"Zoom",       format:"S35",   focals:[24,35,50,65,75,100,135,180,240,290]},
-  {name:"EZ-1 30-90",        type:"Zoom",       format:"LF",    focals:[30,35,40,50,60,70,80,90]},
-  {name:"EZ-2 22-60",        type:"Zoom",       format:"LF",    focals:[22,25,30,35,40,45,50,55,60]},
-],"Fujinon":[
+],
+    "Fujinon":[
   {name:"Premista 19-45",    type:"Zoom",       format:"LF",    focals:[19,22,25,28,32,35,40,45]},
   {name:"Premista 28-100",   type:"Zoom",       format:"LF",    focals:[28,32,35,40,50,60,75,85,100]},
   {name:"Premista 80-250",   type:"Zoom",       format:"LF",    focals:[80,100,120,150,180,200,250]},
   {name:"Cabrio 14-35",      type:"Zoom",       format:"S35",   focals:[14,16,18,21,24,28,35]},
   {name:"Cabrio 19-90",      type:"Zoom",       format:"S35",   focals:[19,24,28,35,40,50,60,75,90]},
-],"Panavision":[
+],
+  "Leica":[
+  {name:"Summicron-C",       type:"Prime",      format:"S35",   focals:[18,21,25,29,35,40,50,75,100,135]},
+  {name:"Thalia",            type:"Prime",      format:"LF",    focals:[24,30,35,45,55,70,90,120,180]},
+],
+  "Panavision":[
   {name:"Primo Classic",     type:"Prime",      format:"S35",   focals:[14.5,17.5,21,24,27,29,35,40,50,55,65,75,85,100,125,150]},
   {name:"Primo Artiste",     type:"Prime",      format:"LF",    focals:[24,29,35,40,50,65,80,100,125,150]},
   {name:"Anamorphic E",      type:"Anamorphic", format:"S35",   focals:[28,35,40,50,60,75,85,100,125,150]},
   {name:"Zoom 24-275",       type:"Zoom",       format:"S35",   focals:[24,35,50,75,100,135,180,240,275]},
-],"Canon":[
-  {name:"Sumire Prime",      type:"Prime",      format:"FF",    focals:[14,20,24,35,50,85,135]},
-  {name:"CN-E Prime",        type:"Prime",      format:"S35",   focals:[14,24,35,50,85,135]},
-  {name:"CN7x17 Cine-Servo", type:"Zoom",       format:"S35",   focals:[17,20,24,35,50,75,120]},
-  {name:"CN-E 30-300mm",     type:"Zoom",       format:"S35",   focals:[30,40,50,60,75,85,100,135,180,200,250,300]},
-],"Sigma":[
+],
+  "Sigma":[
   {name:"Cine FF High Speed",type:"Prime",      format:"FF",    focals:[14,20,24,35,40,50,85,105]},
   {name:"Cine S35",          type:"Prime",      format:"S35",   focals:[18,20,24,35,40,50,85,105]},
   {name:"Cine Zoom 18-35",   type:"Zoom",       format:"S35",   focals:[18,20,22,24,28,35]},
   {name:"Cine Zoom 50-100",  type:"Zoom",       format:"S35",   focals:[50,60,70,85,100]},
-],"Atlas":[
-  {name:"Orion Ana. 2x",     type:"Anamorphic", format:"S35",   focals:[32,40,50,65,80]},
-  {name:"Mercury Ana. 1.5x", type:"Anamorphic", format:"LF",    focals:[24,32,40,50,65]},
+],
+"Zeiss":[
+  {name:"Supreme Prime",     type:"Prime",      format:"LF/FF", focals:[18,21,25,29,35,40,50,65,85,100,135,150,200]},
+  {name:"Supreme Radiance",  type:"Prime",      format:"LF/FF", focals:[18,21,25,29,35,40,50,65,85,100,135,150,200]},
+  {name:"CP.3",              type:"Prime",      format:"S35",   focals:[15,18,21,25,28,35,50,85,100,135]},
 ]};
 
 const ASPECT_RATIOS=[
