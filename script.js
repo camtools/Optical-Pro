@@ -113,7 +113,7 @@ const MAX_VIDEOS = 20;
 // ─── STATE ────────────────────────────────────────────────────────────────────
 const S={
   brand:"ARRI",camIdx:0,modeIdx:0,
-  lensCategory:"ARRI/Zeiss",seriesIdx:0,focalIdx:0,
+  lensCategory:"ARRI/Zeiss",seriesIdx:0,focalIdx:0,focalSelections:{},
   arIdx:3,phoneFOV:65,fovSource:"auto",facingMode:"environment",
   overlays:{frame:true,frameLabel:false,safe:false,grid:false,cross:false,camera:true,lens:true,lensType:false,ar:true,horizon:false},
   overlayColor:'#FF9500'
@@ -122,6 +122,16 @@ const getCam    =()=>CAMERAS[S.brand][S.camIdx];
 const getMode   =()=>getCam().modes[S.modeIdx];
 const getSeries =()=>LENSES[S.lensCategory][S.seriesIdx];
 const getFocal  =()=>getSeries().focals[S.focalIdx];
+const focalSelectionKey =()=>JSON.stringify([S.lensCategory,getSeries().name]);
+function enabledFocalIndices(){
+  const selected=S.focalSelections[focalSelectionKey()];
+  const indices=getSeries().focals.map((_,i)=>i);
+  return Array.isArray(selected)?indices.filter(i=>selected.includes(getSeries().focals[i])):indices;
+}
+function ensureEnabledFocal(){
+  const indices=enabledFocalIndices();
+  if(!indices.includes(S.focalIdx))S.focalIdx=indices.find(i=>i>=S.focalIdx)??indices[indices.length-1];
+}
 const getAR     =()=>ASPECT_RATIOS[S.arIdx];
 const getHFOV   =()=>2*Math.atan(getMode().w/(2*getFocal()))*(180/Math.PI);
 
@@ -131,6 +141,7 @@ function saveSettings(){
     localStorage.setItem(LS_SET,JSON.stringify({
       brand:S.brand,camIdx:S.camIdx,modeIdx:S.modeIdx,
       lensCategory:S.lensCategory,seriesIdx:S.seriesIdx,focalIdx:S.focalIdx,
+      focalSelections:S.focalSelections,
       arIdx:S.arIdx,phoneFOV:S.phoneFOV,fovSource:S.fovSource,
       overlays:{...S.overlays},overlayColor:S.overlayColor
     }));
@@ -152,6 +163,16 @@ function loadSettings(){
       if(LENSES[d.lensCategory][d.seriesIdx])S.seriesIdx=d.seriesIdx;
       if(getSeries().focals[d.focalIdx]!==undefined)S.focalIdx=d.focalIdx;
     }
+    if(d.focalSelections&&typeof d.focalSelections==='object'){
+      for(const [category,series] of Object.entries(LENSES))for(const lens of series){
+        const key=JSON.stringify([category,lens.name]),saved=d.focalSelections[key];
+        if(Array.isArray(saved)){
+          const valid=lens.focals.filter(f=>saved.includes(f));
+          if(valid.length)S.focalSelections[key]=valid;
+        }
+      }
+    }
+    ensureEnabledFocal();
     if(d.arIdx>=0&&d.arIdx<ASPECT_RATIOS.length)S.arIdx=d.arIdx;
     if(d.phoneFOV>=40&&d.phoneFOV<=105){S.phoneFOV=d.phoneFOV;S.fovSource=d.fovSource||'auto';}
     if(d.overlays)S.overlays={...S.overlays,...d.overlays};
@@ -163,6 +184,7 @@ function loadSettings(){
 const screenshots=[];
 
 function saveScreenshots(){
+  if(window.OpticalNative){persistGallery();return;}
   try{
     const data=screenshots.slice(-MAX_SHOTS).map(s=>({dataUrl:s.dataUrl,meta:s.meta,filename:s.filename}));
     localStorage.setItem(LS_SHOT,JSON.stringify(data));
@@ -175,13 +197,30 @@ function saveScreenshots(){
   }
 }
 
-function loadScreenshots(){
+async function loadScreenshots(){
+  if(window.OpticalNative){
+    try{
+      const saved=await OpticalNative.loadGallery();
+      screenshots.push(...saved.photos);
+      videos.push(...saved.videos.map(v=>({...v,blobUrl:URL.createObjectURL(v.blob)})));
+      updateGalleryThumb();
+    }catch(e){alert('Impossibile leggere la galleria salvata: '+e.message);}
+    return;
+  }
   try{
     const raw=localStorage.getItem(LS_SHOT);
     if(!raw)return;
     JSON.parse(raw).forEach(s=>screenshots.push(s));
     updateGalleryThumb();
   }catch(e){}
+}
+
+function persistGallery(){
+  if(!window.OpticalNative)return;
+  OpticalNative.saveGallery(screenshots,videos).catch(e=>{
+    console.error('Gallery:',e);
+    alert('La galleria non è stata salvata. Esporta i file prima di chiudere l’app. '+e.message);
+  });
 }
 
 // ─── CANVAS / ORIENTATION ─────────────────────────────────────────────────────
@@ -242,21 +281,48 @@ function updateFovStatus(){
 }
 
 // ─── CAMERA ───────────────────────────────────────────────────────────────────
-async function startCamera(){
-  try{
-    if(video.srcObject)video.srcObject.getTracks().forEach(t=>t.stop());
-    const stream=await navigator.mediaDevices.getUserMedia({
-      audio:{echoCancellation:false,noiseSuppression:false},
-      video:{facingMode:S.facingMode,width:{ideal:3840,min:1280},height:{ideal:2160,min:720}}
-    });
-    video.srcObject=stream;video.play();detectFOV(stream);
-  }catch(e){console.error('Camera:',e);}
+let cameraStartPromise=null,cameraReady=false;
+function cameraMessage(message){
+  let panel=$('cameraMessage');
+  if(!panel){
+    panel=document.createElement('div');panel.id='cameraMessage';
+    const text=document.createElement('p');panel.appendChild(text);
+    const retry=document.createElement('button');retry.textContent='Riprova';retry.onclick=()=>startCamera();panel.appendChild(retry);
+    if(window.OpticalNative){
+      const settings=document.createElement('button');settings.textContent='Impostazioni iPhone';
+      settings.onclick=()=>OpticalNative.openSettings();panel.appendChild(settings);
+    }
+    app.appendChild(panel);
+  }
+  panel.querySelector('p').textContent=message;panel.hidden=!message;
+}
+function startCamera(){
+  if(cameraStartPromise)return cameraStartPromise;
+  cameraStartPromise=(async()=>{
+    try{
+      cameraReady=false;
+      if(video.srcObject)video.srcObject.getTracks().forEach(t=>t.stop());
+      if(!navigator.mediaDevices?.getUserMedia)throw new Error('Fotocamera non disponibile.');
+      const stream=await navigator.mediaDevices.getUserMedia({
+        audio:window.OpticalNative?false:{echoCancellation:false,noiseSuppression:false},
+        video:{facingMode:S.facingMode,width:{ideal:3840},height:{ideal:2160}}
+      });
+      video.srcObject=stream;await video.play();detectFOV(stream);cameraReady=true;cameraMessage('');
+    }catch(e){
+      console.error('Camera:',e);
+      cameraMessage(e.name==='NotAllowedError'
+        ?'Consenti l’accesso alla fotocamera nelle Impostazioni e premi Riprova.'
+        :'Fotocamera non disponibile. Controlla i permessi e riprova. Il simulatore non dispone della fotocamera dell’iPhone.');
+    }finally{cameraStartPromise=null;}
+  })();
+  return cameraStartPromise;
 }
 
 // ─── BLACK SCREEN RECOVERY ────────────────────────────────────────────────────
 function checkAndRestartCamera(){
+  if(document.visibilityState!=='visible'||cameraStartPromise||isRecording)return;
   if(!video.srcObject||!video.srcObject.active||video.paused||video.readyState<2){
-    setTimeout(startCamera,200);
+    startCamera();
   }
 }
 document.addEventListener('visibilitychange',()=>{
@@ -268,10 +334,17 @@ window.addEventListener('focus',()=>setTimeout(checkAndRestartCamera,400));
 // ─── RECORDING ────────────────────────────────────────────────────────────────
 let mediaRecorder=null,recordedChunks=[],isRecording=false,recSecs=0,recTimer=null;
 let recCanvas=null,recCtx=null,recRAF=null,recFX=0,recFY=0,recFW=0,recFH=0,recDPR2=1;
-const REC_META_H=24;
+const REC_META_H=36;
 const videos=[];
+let recordingStarting=false;
+
+window.opticalPause=()=>{
+  if(isRecording)stopRecording();
+};
 
 function toggleRecording(){
+  if(recordingStarting)return;
+  if(!cameraReady){cameraMessage('Attiva la fotocamera prima di registrare.');return;}
   if(!isRecording&&videos.length>=MAX_VIDEOS){showMemoryFull();return;}
   isRecording?stopRecording():startRecording();
 }
@@ -347,17 +420,7 @@ function recDrawLoop(){
   // Metadata bar with live clock
   const now=new Date();
   const dateStr=`${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getFullYear()).slice(-2)}  ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
-  recCtx.fillStyle='rgba(0,0,0,.9)';recCtx.fillRect(0,rH,rW,REC_META_H);
-  const fs2=Math.max(8,Math.min(10,rW/80));
-  recCtx.font=`bold ${fs2}px Courier New`;recCtx.fillStyle=OG;recCtx.textBaseline='middle';
-  const my=rH+REC_META_H/2;
-  const cam=getCam(),m=getMode(),s=getSeries(),f=getFocal(),ar=getAR(),cinemaFOV=getHFOV();
-  const ml=`${S.brand} ${cam.model}  ${m.name}`;
-  const mc=`${s.name}  ${f}mm  ${cinemaFOV.toFixed(1)}°`;
-  const mr=`${ar.label}  ${dateStr}`;
-  recCtx.fillText(ml,8,my);
-  const cw=recCtx.measureText(mc).width;recCtx.fillText(mc,(rW-cw)/2,my);
-  const rw2=recCtx.measureText(mr).width;recCtx.fillText(mr,rW-rw2-8,my);
+  drawExportMetadata(recCtx,rW,rH,REC_META_H,dateStr,recDPR2);
 
   // REC dot
   const pulse=Math.floor(Date.now()/500)%2===0;
@@ -368,7 +431,15 @@ function recDrawLoop(){
 }
 
 async function startRecording(){
+  recordingStarting=true;
   try{
+    if(typeof MediaRecorder==='undefined')throw new Error('Registrazione non supportata su questo dispositivo.');
+    if(window.OpticalNative&&!video.srcObject.getAudioTracks().length){
+      try{
+        const audio=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false}});
+        audio.getAudioTracks().forEach(t=>video.srcObject.addTrack(t));
+      }catch(e){console.info('Microfono non disponibile: registrazione senza audio.');}
+    }
     // Create recording canvas sized to frame only (no sidebar, no letterbox)
     const{fX,fY,fW,fH}=getFrameRect();
     recFX=fX;recFY=fY;recFW=fW;recFH=fH;
@@ -415,6 +486,7 @@ async function startRecording(){
       };
       generateVideoThumb(blobUrl).then(thumb=>{entry.thumbUrl=thumb;renderGalleryGrid();updateGalleryThumb();});
       videos.push(entry);
+      persistGallery();
       updateGalleryThumb();
       isRecording=false;clearInterval(recTimer);recSecs=0;updateRecBtn();
     };
@@ -426,7 +498,7 @@ async function startRecording(){
     console.error('startRecording:',e);
     isRecording=false;cancelAnimationFrame(recRAF);
     alert('Errore: '+e.message);
-  }
+  }finally{recordingStarting=false;}
 }
 
 function stopRecording(){
@@ -462,10 +534,12 @@ let OG='#FF9500';
 
 function getFrameRect(){
   const logW=canvas.width/DPR,logH=canvas.height/DPR,ar=getAR();
-  const availW=logW-SIDE_W;
+  // Reserve actual space outside every aspect ratio for the viewfinder labels.
+  const top=S.overlays.frameLabel?58:42,bottom=S.overlays.lensType?42:30,inset=8;
+  const availW=logW-SIDE_W-inset*2,availH=Math.max(32,logH-top-bottom);
   let fW=availW,fH=fW/ar.value;
-  if(fH>logH){fH=logH;fW=fH*ar.value;}
-  return{fX:(availW-fW)/2,fY:(logH-fH)/2,fW,fH,logW,logH};
+  if(fH>availH){fH=availH;fW=fH*ar.value;}
+  return{fX:inset+(availW-fW)/2,fY:top+(availH-fH)/2,fW,fH,logW,logH};
 }
 
 function draw(){
@@ -505,8 +579,6 @@ function draw(){
     const pW=fW*vZoom,pH=fH*vZoom,pX=fX+(fW-pW)/2,pY=fY+(fH-pH)/2;
     ctx.setLineDash([5,5]);ctx.strokeStyle='rgba(255,149,0,.3)';ctx.lineWidth=1;
     ctx.strokeRect(pX,pY,pW,pH);ctx.setLineDash([]);
-    ctx.font='bold 9px Courier New';ctx.fillStyle='rgba(255,149,0,.45)';
-    ctx.fillText('PHONE FOV LIMIT  '+S.phoneFOV+'°',pX+6,pY-5);
     ctx.restore();
   }
 
@@ -520,7 +592,7 @@ function draw(){
     const lbl=ar.label+'  '+ar.name.toUpperCase();
     const fs=Math.max(9,Math.min(11,fW/50));
     ctx.font=`500 ${fs}px -apple-system,sans-serif`;
-    const tw=ctx.measureText(lbl).width,lx=fX+(fW-tw)/2,ly=fY-7;
+    const tw=ctx.measureText(lbl).width,lx=fX+(fW-tw)/2,ly=fY-42;
     ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(lx-5,ly-fs-1,tw+10,fs+5);
     ctx.fillStyle=OG;ctx.fillText(lbl,lx,ly);
   }
@@ -569,29 +641,34 @@ function draw(){
     ctx.setLineDash([]);
   }
 
-  // Info corners
+  // Information lives in the reserved bands above and below the captured frame.
   if(!noTextOverlay){
     const cam=getCam(),m=getMode(),f=getFocal();
-    const fs=Math.max(9,Math.min(11,fW/52)),pad=8;
+    const fs=Math.max(9,Math.min(11,fW/52));
     ctx.font=`bold ${fs}px 'Courier New',monospace`;ctx.fillStyle=OG;
+    function label(text,x,y,maxWidth,align='left'){
+      let fitted=text;
+      while(fitted.length&&ctx.measureText(fitted).width>maxWidth)fitted=fitted.slice(0,-1);
+      if(fitted!==text)fitted=fitted.slice(0,-1)+'…';
+      ctx.textAlign=align;ctx.fillText(fitted,x,y);ctx.textAlign='left';
+    }
+    const leftW=fW*.65,rightW=fW*.32;
     if(S.overlays.camera){
-      ctx.fillText(`${S.brand} ${cam.model}`,fX+pad,fY+fs+pad);
-      ctx.fillText(m.name,fX+pad,fY+fs*2.3+pad);
+      label(`${S.brand} ${cam.model}`,fX,fY-26,leftW);
+      label(m.name,fX,fY-10,leftW);
     }
     if(S.overlays.lens||S.overlays.lensType){
       const rt=`${f}mm  ${cinemaFOV.toFixed(1)}°`;
-      ctx.fillText(rt,fX+fW-ctx.measureText(rt).width-pad,fY+fs+pad);
+      label(rt,fX+fW,fY-26,rightW,'right');
     }
     if(S.overlays.lens){
-      ctx.fillText(getSeries().name,fX+pad,fY+fH-pad);
+      label(getSeries().name,fX,fY+fH+18,leftW);
     }
     if(S.overlays.lensType){
-      const lt=getSeries().type;
-      ctx.fillText(lt,fX+pad,fY+fH-(S.overlays.lens?fs*1.5+pad:pad));
+      label(getSeries().type,fX,fY+fH+(S.overlays.lens?32:18),leftW);
     }
     if(S.overlays.ar){
-      const arLbl=getAR().label;
-      ctx.fillText(arLbl,fX+fW-ctx.measureText(arLbl).width-pad,fY+fH-pad);
+      label(getAR().label,fX+fW,fY+fH+18,rightW,'right');
     }
   }
 
@@ -602,7 +679,7 @@ function draw(){
     const pulse=Math.floor(Date.now()/500)%2===0;
     ctx.font=`bold 11px 'Courier New',monospace`;
     const recW=ctx.measureText('00:00').width+14;
-    const rx=fX+(fW-recW)/2,ry=fY+8;
+    const rx=fX+(fW-recW)/2,ry=fY+fH+5;
     ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(rx-2,ry,recW+4,16);
     ctx.beginPath();ctx.arc(rx+8,ry+8,4,0,Math.PI*2);
     ctx.fillStyle=pulse?'#FF3B30':'rgba(255,59,48,.3)';ctx.fill();
@@ -614,30 +691,42 @@ function draw(){
 
 // ─── SCREENSHOT ───────────────────────────────────────────────────────────────
 function captureScreenshot(){
+  if(!cameraReady){cameraMessage('Attiva la fotocamera prima di scattare.');return;}
   if(screenshots.length>=MAX_SHOTS){showMemoryFull();return;}
   noTextOverlay=true;
   requestAnimationFrame(()=>requestAnimationFrame(()=>{doCapture();noTextOverlay=false;}));
 }
 
+// Keep exported information in a separate two-row footer, with bounded columns.
+function drawExportMetadata(context,width,frameHeight,barHeight,dateText,scale=1){
+  context.save();context.setTransform(scale,0,0,scale,0,0);
+  context.fillStyle='#080808';context.fillRect(0,frameHeight,width,barHeight);
+  const fs=Math.max(8,Math.min(10,width/50)),pad=8,column=(width-pad*3)/2;
+  context.font=`bold ${fs}px 'Courier New',monospace`;context.fillStyle=OG;context.textBaseline='middle';
+  function text(value,x,y,align){
+    let fitted=value;
+    while(fitted.length&&context.measureText(fitted).width>column)fitted=fitted.slice(0,-1);
+    if(fitted!==value)fitted=fitted.slice(0,-1)+'…';
+    context.textAlign=align;context.fillText(fitted,x,y);
+  }
+  text(`${S.brand} ${getCam().model}`,pad,frameHeight+11,'left');
+  text(`${getSeries().name} ${getFocal()}mm ${getHFOV().toFixed(1)}°`,width-pad,frameHeight+11,'right');
+  text(getMode().name,pad,frameHeight+26,'left');
+  text(`${getAR().label}  ${dateText}`,width-pad,frameHeight+26,'right');
+  context.restore();
+}
+
 function doCapture(){
   const{fX,fY,fW,fH}=getFrameRect();
-  const metaH=28,pFX=fX*DPR,pFY=fY*DPR,pFW=fW*DPR,pFH=fH*DPR,pMH=metaH*DPR;
+  const metaH=36,pFX=fX*DPR,pFY=fY*DPR,pFW=fW*DPR,pFH=fH*DPR,pMH=metaH*DPR;
   const tmp=document.createElement('canvas');
   tmp.width=Math.round(pFW);tmp.height=Math.round(pFH+pMH);
   const tc=tmp.getContext('2d');
   tc.drawImage(canvas,Math.round(pFX),Math.round(pFY),Math.round(pFW),Math.round(pFH),0,0,Math.round(pFW),Math.round(pFH));
   const cam=getCam(),m=getMode(),s=getSeries(),f=getFocal(),ar=getAR();
-  tc.fillStyle='rgba(0,0,0,.9)';tc.fillRect(0,Math.round(pFH),Math.round(pFW),Math.round(pMH));
-  const fs=Math.round(10*DPR);tc.font=`bold ${fs}px Courier New`;tc.fillStyle='#FF9500';tc.textBaseline='middle';
-  const my=Math.round(pFH)+Math.round(pMH)/2;
-  const left=`${S.brand} ${cam.model}  ${m.name}`;
-  const center=`${s.name}  ${f}mm  ${getHFOV().toFixed(1)}°`;
   const now=new Date();
   const dateStr=`${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getFullYear()).slice(-2)}  ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-  const right=`${ar.label}  ${dateStr}`;
-  tc.fillText(left,Math.round(8*DPR),my);
-  const cw=tc.measureText(center).width;tc.fillText(center,(Math.round(pFW)-cw)/2,my);
-  const rw=tc.measureText(right).width;tc.fillText(right,Math.round(pFW)-rw-Math.round(8*DPR),my);
+  drawExportMetadata(tc,fW,fH,metaH,dateStr,DPR);
   const dataUrl=tmp.toDataURL('image/jpeg',.88);
   const ts=`${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`;
   const shot={dataUrl,meta:`${S.brand} ${cam.model} | ${s.name} ${f}mm | ${ar.label}`,filename:`opticalpro_${S.brand}_${f}mm_${ar.label.replace(':','x')}_${ts}.jpg`};
@@ -659,6 +748,11 @@ function updateGalleryThumb(){
 
 // ─── SAVE TO PHOTOS ───────────────────────────────────────────────────────────
 async function saveToPhotos(dataUrl,filename){
+  if(window.OpticalNative){
+    try{await OpticalNative.share(await (await fetch(dataUrl)).blob(),filename);}
+    catch(e){alert('Esportazione non riuscita: '+e.message);}
+    return;
+  }
   try{
     if(navigator.share&&navigator.canShare){
       const res=await fetch(dataUrl);
@@ -704,14 +798,14 @@ function renderGalleryGrid(){
 
   if(isFoto){
     grid.innerHTML=items.map((s,i)=>`
-      <div class="gitem" onclick="openViewer('foto',${i})">
+      <div class="gitem" role="button" aria-label="Apri foto ${i+1}" onclick="openViewer('foto',${i})">
         <img src="${s.dataUrl}" loading="lazy">
         <div class="gitem-meta">${s.meta}</div>
         <button class="gitem-del" onclick="event.stopPropagation();deleteShot(${i})">&#x2715;</button>
       </div>`).join('');
   } else {
     grid.innerHTML=items.map((v,i)=>`
-      <div class="gitem" onclick="openViewer('video',${i})">
+      <div class="gitem" role="button" aria-label="Apri video ${i+1}" onclick="openViewer('video',${i})">
         <div class="vid-thumb-wrap">
           ${v.thumbUrl?`<img src="${v.thumbUrl}">`:''}
           <div class="vid-play">&#x25B6;</div>
@@ -727,6 +821,7 @@ function deleteShot(i){screenshots.splice(i,1);saveScreenshots();updateGalleryTh
 function deleteVideo(i){
   URL.revokeObjectURL(videos[i].blobUrl);
   videos.splice(i,1);
+  persistGallery();
   updateGalleryThumb();
   renderGalleryGrid();
 }
@@ -786,6 +881,11 @@ function onVTouchEnd(e){const dx=e.changedTouches[0].clientX-vTouchX;if(Math.abs
 async function saveCurrentItem(){
   if(viewerType==='video'){
     const v=videos[viewerIdx];
+    if(window.OpticalNative){
+      try{await OpticalNative.share(v.blob,v.filename);}
+      catch(e){alert('Esportazione non riuscita: '+e.message);}
+      return;
+    }
     try{
       if(navigator.share&&navigator.canShare){
         const file=new File([v.blob],v.filename,{type:v.mimeType});
@@ -809,9 +909,13 @@ function buildBrandChips(){$('brandChips').innerHTML=Object.keys(CAMERAS).map(b=
 function buildCamSel(){$('camSel').innerHTML=CAMERAS[S.brand].map((c,i)=>`<option value="${i}"${i===S.camIdx?' selected':''}>${c.model} (${c.year})</option>`).join('');}
 function buildModeSel(){$('modeSel').innerHTML=getCam().modes.map((m,i)=>`<option value="${i}"${i===S.modeIdx?' selected':''}>${m.name}  ${m.res}</option>`).join('');}
 function buildSensorMeta(){const m=getMode();$('sensorMeta').innerHTML=`Sensore <span>${m.w} × ${m.h} mm</span>`;}
-function buildLensBrandChips(){$('lensBrandChips').innerHTML=Object.keys(LENSES).map(c=>`<button class="chip${c===S.lensCategory?' active':''}" style="font-size:10px" onclick="setLensCat('${c}')">${c}</button>`).join('');}
+function buildLensBrandChips(){$('lensBrandChips').innerHTML=Object.keys(LENSES).map(c=>`<button class="chip${c===S.lensCategory?' active':''}" onclick="setLensCat('${c}')">${c}</button>`).join('');}
 function buildSeriesSel(){$('seriesSel').innerHTML=LENSES[S.lensCategory].map((s,i)=>`<option value="${i}"${i===S.seriesIdx?' selected':''}>[${s.type}] ${s.name}  (${s.format})</option>`).join('');}
-function buildFocalChips(){$('focalChips').innerHTML=getSeries().focals.map((f,i)=>`<button class="chip${i===S.focalIdx?' active':''}" onclick="setFocalIdx(${i})">${f}</button>`).join('');}
+function buildFocalChips(){
+  const enabled=enabledFocalIndices();
+  $('focalChips').innerHTML=getSeries().focals.map((f,i)=>`<button class="chip focal-chip${enabled.includes(i)?' active':''}" aria-pressed="${enabled.includes(i)}" aria-label="${f} mm" onclick="toggleFocal(${i})"><span class="focal-check" aria-hidden="true">${enabled.includes(i)?'✓':'−'}</span>${f}<span class="focal-unit">mm</span></button>`).join('');
+  $('focalSelectionStatus').textContent=`${enabled.length} di ${getSeries().focals.length} attive`;
+}
 function buildARChips(){$('arChips').innerHTML=ASPECT_RATIOS.map((a,i)=>`<button class="chip${i===S.arIdx?' active':''}" onclick="setAR(${i})">${a.label}</button>`).join('');}
 function buildLensMeta(){const m=getMode();$('lensMeta').innerHTML=`HFOV <span>${getHFOV().toFixed(1)}°</span>  &nbsp; Sensore <span>${m.w}×${m.h}mm</span>`;}
 const OVERLAY_COLORS=[
@@ -837,7 +941,7 @@ function buildOverlayChips(){
 }
 function buildFovPresets(){
   const p=[['iPhone Wide',65],['iPhone UW',100],['iPhone 2x',48],['Android',68]];
-  $('fovPresets').innerHTML=p.map(([l,v])=>`<button class="chip${S.phoneFOV===v?' active':''}" style="font-size:10px" onclick="setFovPreset(${v})">${l}</button>`).join('');
+  $('fovPresets').innerHTML=p.map(([l,v])=>`<button class="chip${S.phoneFOV===v?' active':''}" onclick="setFovPreset(${v})">${l}</button>`).join('');
 }
 function updateSidebar(){
   const cam=getCam(),m=getMode(),s=getSeries(),f=getFocal();
@@ -845,8 +949,10 @@ function updateSidebar(){
   $('sModeName').textContent=m.name;
   $('sSeriesName').textContent=s.name;
   $('sNavFocalNum').textContent=f;
-  $('btnPrev').disabled=S.focalIdx===0;
-  $('btnNext').disabled=S.focalIdx===s.focals.length-1;
+  $('sNavFocalNum').dataset.digits=String(f).length;
+  const enabled=enabledFocalIndices();
+  $('btnPrev').disabled=!enabled.some(i=>i<S.focalIdx);
+  $('btnNext').disabled=!enabled.some(i=>i>S.focalIdx);
 }
 function buildAll(){
   buildBrandChips();buildCamSel();buildModeSel();buildSensorMeta();
@@ -861,11 +967,32 @@ function switchTab(n,btn){document.querySelectorAll('.tab-pane').forEach(p=>p.cl
 function setBrand(b){S.brand=b;S.camIdx=0;S.modeIdx=0;buildBrandChips();buildCamSel();buildModeSel();buildSensorMeta();buildLensMeta();updateSidebar();saveSettings();}
 function onCamChange(){S.camIdx=+$('camSel').value;S.modeIdx=0;buildModeSel();buildSensorMeta();buildLensMeta();updateSidebar();saveSettings();}
 function onModeChange(){S.modeIdx=+$('modeSel').value;buildSensorMeta();buildLensMeta();updateSidebar();saveSettings();}
-function setLensCat(c){S.lensCategory=c;S.seriesIdx=0;S.focalIdx=0;buildLensBrandChips();buildSeriesSel();buildFocalChips();buildLensMeta();updateSidebar();saveSettings();}
-function onSeriesChange(){S.seriesIdx=+$('seriesSel').value;S.focalIdx=0;buildFocalChips();buildLensMeta();updateSidebar();saveSettings();}
+function setLensCat(c){S.lensCategory=c;S.seriesIdx=0;S.focalIdx=0;ensureEnabledFocal();buildLensBrandChips();buildSeriesSel();buildFocalChips();buildLensMeta();updateSidebar();saveSettings();}
+function onSeriesChange(){S.seriesIdx=+$('seriesSel').value;S.focalIdx=0;ensureEnabledFocal();buildFocalChips();buildLensMeta();updateSidebar();saveSettings();}
 function setFocalIdx(i){S.focalIdx=i;buildFocalChips();buildLensMeta();updateSidebar();saveSettings();}
-function prevFocalEv(e){e.stopPropagation();if(S.focalIdx>0){S.focalIdx--;buildFocalChips();buildLensMeta();updateSidebar();saveSettings();}}
-function nextFocalEv(e){e.stopPropagation();const s=getSeries();if(S.focalIdx<s.focals.length-1){S.focalIdx++;buildFocalChips();buildLensMeta();updateSidebar();saveSettings();}}
+function toggleFocal(i){
+  const enabled=enabledFocalIndices();
+  if(enabled.includes(i)&&enabled.length===1){
+    $('focalSelectionStatus').textContent='Mantieni almeno una focale attiva.';
+    return;
+  }
+  S.focalSelections[focalSelectionKey()]=getSeries().focals.filter((_,index)=>index===i?!enabled.includes(i):enabled.includes(index));
+  ensureEnabledFocal();buildFocalChips();buildLensMeta();updateSidebar();saveSettings();
+}
+function selectAllFocals(){
+  delete S.focalSelections[focalSelectionKey()];
+  buildFocalChips();updateSidebar();saveSettings();
+}
+function prevFocalEv(e){
+  e.stopPropagation();
+  const previous=enabledFocalIndices().filter(i=>i<S.focalIdx).pop();
+  if(previous!==undefined)setFocalIdx(previous);
+}
+function nextFocalEv(e){
+  e.stopPropagation();
+  const next=enabledFocalIndices().find(i=>i>S.focalIdx);
+  if(next!==undefined)setFocalIdx(next);
+}
 function setAR(i){S.arIdx=i;buildARChips();updateSidebar();saveSettings();}
 function toggleOv(k){S.overlays[k]=!S.overlays[k];buildOverlayChips();saveSettings();}
 function onFovChange(){S.phoneFOV=+$('fovSlider').value;S.fovSource='manual';$('fovVal').textContent=S.phoneFOV+'°';buildFovPresets();updateFovStatus();saveSettings();}
@@ -873,16 +1000,29 @@ function setFovPreset(v){S.phoneFOV=v;S.fovSource='manual';$('fovSlider').value=
 function resetFovAuto(){S.fovSource='auto';if(video.srcObject)detectFOV(video.srcObject);}
 
 // ─── LAUNCH ───────────────────────────────────────────────────────────────────
-(function(){
+(async function(){
   loadSettings(); // restore before UI build
   const splash=document.getElementById('splash');
   app.style.display='block';
   applyLandscape();
   buildAll();
-  loadScreenshots();
+  await loadScreenshots();
   startCamera();
   draw();
-  setTimeout(()=>splash.classList.add('rotate'),2000);
-  setTimeout(()=>splash.classList.add('fade'),5200);
-  setTimeout(()=>splash.style.display='none',5900);
+  // The logo follows the system orientation. It never rotates on a timer.
+  let splashFinished=false;
+  const earliest=performance.now()+1800;
+  function finishSplash(){
+    if(splashFinished)return;
+    const remaining=earliest-performance.now();
+    if(remaining>0){setTimeout(finishSplash,Math.ceil(remaining));return;}
+    if(window.innerHeight>window.innerWidth)return;
+    splashFinished=true;
+    window.removeEventListener('resize',finishSplash);
+    splash.classList.add('fade');
+    if(window.OpticalNative)OpticalNative.finishLaunch().catch(console.error);
+    setTimeout(()=>splash.style.display='none',700);
+  }
+  window.addEventListener('resize',finishSplash);
+  setTimeout(finishSplash,1800);
 })();
