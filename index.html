@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="icon" href="icon.png">
 <title>Optical Pro</title>
-<link rel="stylesheet" href="style.css?v=20261021-14">
+<link rel="stylesheet" href="style.css?v=20261026-20">
 </head>
 <body>
 
@@ -25,6 +25,7 @@
 <div id="app" style="display:none">
   <video id="video" muted playsinline autoplay></video>
   <canvas id="canvas"></canvas>
+  <button id="webCalibrationNotice" onclick="requireWebCalibration()">Calibra la fotocamera per usare il mirino</button>
   <div id="shotFlash"></div>
   <div id="memoryFull">Memoria piena<br><span>Elimina foto o video dalla galleria</span></div>
 
@@ -64,7 +65,7 @@
       <button class="tab-btn"        onclick="switchTab('lens',this)">LENS</button>
       <button class="tab-btn"        onclick="switchTab('ratio',this)">ASPECT</button>
       <button class="tab-btn"        onclick="switchTab('overlay',this)">OVERLAY</button>
-      <button class="tab-btn"        onclick="switchTab('fov',this)">FOV</button>
+      <button class="tab-btn"        onclick="switchTab('fov',this)">CALIBRA</button>
     </div>
     <div class="modal-body">
       <div class="tab-pane active" id="pane-camera">
@@ -91,17 +92,22 @@
         <div class="row"><span class="lbl">Color</span><div class="body chips" id="colorChips"></div></div>
       </div>
       <div class="tab-pane" id="pane-fov">
-        <div class="row" style="align-items:center;margin-bottom:8px">
-          <span class="lbl">Stato</span>
-          <span class="fov-status" id="fovStatus" style="color:#34c759">&#x25CF; AUTO</span>
+        <div id="legacyFovControls" hidden><div id="fovPresets"></div><input id="fovSlider"><span id="fovVal"></span></div>
+        <div id="nativeOpticsControls" hidden>
+          <div class="row"><span class="lbl">Telefono</span><div class="body"><select id="phoneCameraSel" aria-label="Fotocamera del telefono" onchange="onPhoneCameraChange()"></select></div></div>
+          <div class="meta" id="nativeFovStatus" role="status"></div>
+          <div class="hint" id="nativeCameraDetails"></div><div class="hint" id="nativeCoverage"></div>
+          <div class="hint">Il browser non comunica il campo visivo ottico. Calibra ogni fotocamera prima di usare il mirino: la misura resta salvata su questo browser per il formato attivo. Il browser può gestire internamente più lenti: verifica la misura dopo aggiornamenti o cambi di lente.</div>
+          <div class="chips" style="margin-top:10px"><button class="chip" onclick="beginCalibration()">Misura e calibra</button><button class="chip" onclick="resetNativeCalibration()">Rimuovi calibrazione</button></div>
+          <div id="calibrationEditor" hidden>
+            <p class="hint">Inquadra un oggetto piano di larghezza nota, centrato e parallelo al telefono. Usa una distanza di almeno 1–2 metri e misurala dalla lente, non dallo schermo. Nella foto completa, porta le due linee sui bordi dell’oggetto.</p>
+            <div id="calibrationPicture"><img id="calibrationImage" alt="Immagine completa della fotocamera per la calibrazione"><span id="calibrationLeft"></span><span id="calibrationRight"></span></div>
+            <label class="hint">Posizione dei riferimenti<input id="calibrationSpan" type="range" min="5" max="95" step="0.01" value="60" oninput="updateCalibrationGuides()"></label>
+            <div class="calibration-measures"><label>Larghezza oggetto (cm)<input id="calibrationWidth" type="number" min="0.1" step="any" inputmode="decimal" oninput="updateCalibrationGuides()"></label><label>Distanza dalla lente (cm)<input id="calibrationDistance" type="number" min="0.1" step="any" inputmode="decimal" oninput="updateCalibrationGuides()"></label></div>
+            <div class="hint" id="calibrationResult" role="status"></div>
+            <button class="chip" onclick="saveCalibration()">Salva calibrazione</button>
+          </div>
         </div>
-        <div class="row">
-          <span class="lbl">FOV</span>
-          <div class="body"><div class="fov-row"><input type="range" min="40" max="105" value="65" id="fovSlider" oninput="onFovChange()"><span class="fov-val" id="fovVal">65&deg;</span></div></div>
-        </div>
-        <div class="hint">Rilevato automaticamente. Regola se necessario.</div>
-        <div class="chips" style="margin-top:10px" id="fovPresets"></div>
-        <button class="chip" style="margin-top:10px" onclick="resetFovAuto()">&#x21BA;&nbsp;Auto-rileva</button>
       </div>
     </div>
   </div>
@@ -148,6 +154,8 @@
 
 </div><!-- /app -->
 
-<script src="script.js?v=20261021-14"></script>
+<script src="optics.js?v=20261026-20"></script>
+
+<script src="script.js?v=20261026-20"></script>
 </body>
 </html>

@@ -46,8 +46,8 @@ const LENSES={
   {name:"Master Zoom 16-110",type:"Zoom",       format:"S35",   focals:[16,18,21,24,28,32,35,40,50,65,75,85,100,110]},
 ],
   "Atlas":[
-  {name:"Orion Ana. 2x",     type:"Anamorphic", format:"S35",   focals:[32,40,50,65,80]},
-  {name:"Mercury Ana. 1.5x", type:"Anamorphic", format:"LF",    focals:[24,32,40,50,65]},
+  {name:"Orion Ana. 2x",     type:"Anamorphic", squeeze:2, format:"S35",   focals:[32,40,50,65,80]},
+  {name:"Mercury Ana. 1.5x", type:"Anamorphic", squeeze:1.5, format:"LF",    focals:[24,32,40,50,65]},
 ],
   "Canon":[
   {name:"Sumire Prime",      type:"Prime",      format:"FF",    focals:[14,20,24,35,50,85,135]},
@@ -60,7 +60,7 @@ const LENSES={
   {name:"S7/i",              type:"Prime",      format:"LF/FF", focals:[18,25,32,40,50,65,75,100,135]},
   {name:"miniS4/i",          type:"Prime",      format:"S35",   focals:[18,21,25,32,40,50,65,75,100,135]},
   {name:"Panchro/i Classic", type:"Prime",      format:"S35",   focals:[18,25,32,50,75,100]},
-  {name:"Anamorphic/i SF",   type:"Anamorphic", format:"S35",   focals:[32,40,50,65,75,100,135,180]},
+  {name:"Anamorphic/i SF",   type:"Anamorphic", squeeze:2, format:"S35",   focals:[32,40,50,65,75,100,135,180]},
 ],
     "Fujinon":[
   {name:"Premista 19-45",    type:"Zoom",       format:"LF",    focals:[19,22,25,28,32,35,40,45]},
@@ -76,7 +76,7 @@ const LENSES={
   "Panavision":[
   {name:"Primo Classic",     type:"Prime",      format:"S35",   focals:[14.5,17.5,21,24,27,29,35,40,50,55,65,75,85,100,125,150]},
   {name:"Primo Artiste",     type:"Prime",      format:"LF",    focals:[24,29,35,40,50,65,80,100,125,150]},
-  {name:"Anamorphic E",      type:"Anamorphic", format:"S35",   focals:[28,35,40,50,60,75,85,100,125,150]},
+  {name:"Anamorphic E",      type:"Anamorphic", squeeze:2, format:"S35",   focals:[28,35,40,50,60,75,85,100,125,150]},
   {name:"Zoom 24-275",       type:"Zoom",       format:"S35",   focals:[24,35,50,75,100,135,180,240,275]},
 ],
   "Sigma":[
@@ -114,7 +114,7 @@ const MAX_VIDEOS = 20;
 const S={
   brand:"ARRI",camIdx:0,modeIdx:0,
   lensCategory:"ARRI/Zeiss",seriesIdx:0,focalIdx:0,focalSelections:{},
-  arIdx:3,phoneFOV:65,fovSource:"auto",facingMode:"environment",
+  arIdx:3,phoneFOV:65,fovSource:"auto",facingMode:"environment",phoneCameraID:"auto",
   overlays:{frame:true,frameLabel:false,safe:false,grid:false,cross:false,camera:true,lens:true,lensType:false,ar:true,horizon:false},
   overlayColor:'#FF9500'
 };
@@ -133,7 +133,7 @@ function ensureEnabledFocal(){
   if(!indices.includes(S.focalIdx))S.focalIdx=indices.find(i=>i>=S.focalIdx)??indices[indices.length-1];
 }
 const getAR     =()=>ASPECT_RATIOS[S.arIdx];
-const getHFOV   =()=>2*Math.atan(getMode().w/(2*getFocal()))*(180/Math.PI);
+const getHFOV   =()=>OpticalMath.targetHFOV(getMode().w,getMode().h,getFocal(),getAR().value,getSeries().squeeze||1);
 
 // ─── PERSIST SETTINGS ─────────────────────────────────────────────────────────
 function saveSettings(){
@@ -142,7 +142,7 @@ function saveSettings(){
       brand:S.brand,camIdx:S.camIdx,modeIdx:S.modeIdx,
       lensCategory:S.lensCategory,seriesIdx:S.seriesIdx,focalIdx:S.focalIdx,
       focalSelections:S.focalSelections,
-      arIdx:S.arIdx,phoneFOV:S.phoneFOV,fovSource:S.fovSource,
+      arIdx:S.arIdx,phoneFOV:S.phoneFOV,fovSource:S.fovSource,phoneCameraID:S.phoneCameraID,
       overlays:{...S.overlays},overlayColor:S.overlayColor
     }));
   }catch(e){}
@@ -173,6 +173,7 @@ function loadSettings(){
       }
     }
     ensureEnabledFocal();
+    if(typeof d.phoneCameraID==='string')S.phoneCameraID=d.phoneCameraID;
     if(d.arIdx>=0&&d.arIdx<ASPECT_RATIOS.length)S.arIdx=d.arIdx;
     if(d.phoneFOV>=40&&d.phoneFOV<=105){S.phoneFOV=d.phoneFOV;S.fovSource=d.fovSource||'auto';}
     if(d.overlays)S.overlays={...S.overlays,...d.overlays};
@@ -203,6 +204,15 @@ async function loadScreenshots(){
       const saved=await OpticalNative.loadGallery();
       screenshots.push(...saved.photos);
       videos.push(...saved.videos.map(v=>({...v,blobUrl:URL.createObjectURL(v.blob)})));
+      const pending=await OpticalNative.cameraRecover();
+      for(const record of pending){
+        if(!videos.some(v=>v.nativeID===record.id)){
+          const result=await OpticalNative.cameraReadRecording(record),blobUrl=URL.createObjectURL(result.blob);
+          videos.push({blob:result.blob,blobUrl,duration:record.duration||0,meta:record.meta||'Registrazione recuperata',filename:record.filename||'opticalpro_recuperato.mp4',mimeType:'video/mp4',optical:record.optical,nativeID:record.id,thumbUrl:await generateVideoThumb(blobUrl)});
+          await OpticalNative.saveGallery(screenshots,videos);
+        }
+        await OpticalNative.cameraRecordRelease(record.id);
+      }
       updateGalleryThumb();
     }catch(e){alert('Impossibile leggere la galleria salvata: '+e.message);}
     return;
@@ -240,6 +250,7 @@ function applyLandscape(){
     ?`position:fixed;width:${vh}px;height:${vw}px;top:${(vh-vw)/2}px;left:-${(vh-vw)/2}px;transform:rotate(90deg);transform-origin:center center;overflow:hidden;`
     :'position:fixed;top:0;left:0;width:100%;height:100%;overflow:hidden;';
   resizeCanvas();
+  if(nativeCamera)requestNativeConfiguration();
 }
 
 function resizeCanvas(){
@@ -254,30 +265,180 @@ function resizeCanvas(){
 window.addEventListener('resize',applyLandscape);
 window.addEventListener('orientationchange',()=>setTimeout(applyLandscape,150));
 
-// ─── AUTO FOV ─────────────────────────────────────────────────────────────────
-function detectFOV(stream){
-  if(S.fovSource==='manual')return; // respect manual override
-  const track=stream.getVideoTracks()[0];if(!track)return;
-  const label=(track.label||'').toLowerCase(),ua=navigator.userAgent;
-  let v=null;
-  if(/iphone|ipad/i.test(ua)){
-    if(label.includes('ultra wide')||label.includes('ultra-wide'))v=100;
-    else if(label.includes('telephoto')||label.includes('tele'))v=48;
-    else if(label.includes('back')||label.includes('rear'))v=65;
-    else if(label.includes('front')||label.includes('facetime'))v=62;
-  }
-  if(!v&&track.getCapabilities){try{const c=track.getCapabilities();if(c.zoom)v=(c.zoom.min||1)<=0.6?98:68;}catch(e){}}
-  if(!v)v=/android/i.test(navigator.userAgent)?68:65;
-  S.phoneFOV=v;
-  const sl=$('fovSlider');if(sl)sl.value=v;
-  const fv=$('fovVal');if(fv)fv.textContent=v+'°';
-  buildFovPresets();updateFovStatus();
+// Browser calibration belongs to the delivered camera stream, never a phone-model guess.
+const anonymousTracks=new WeakMap();
+let webInfo=null,webReference=null,webSelectedID=localStorage.getItem('optical.web.camera')||'';
+function webSignature(){
+  const track=video.srcObject?.getVideoTracks()[0];
+  if(!track||track.readyState!=='live')return null;
+  const t=track.getSettings();
+  if(!t.deviceId){if(!anonymousTracks.has(track))anonymousTracks.set(track,crypto.randomUUID());t.deviceId='session:'+anonymousTracks.get(track);}
+  return OpticalMath.browserCalibrationKey({...t,width:video.videoWidth,height:video.videoHeight});
 }
-function updateFovStatus(){
-  const el=$('fovStatus');if(!el)return;
-  const auto=S.fovSource!=='manual';
-  el.textContent=auto?'● AUTO  '+S.phoneFOV+'°':'● MANUAL  '+S.phoneFOV+'°';
-  el.style.color=auto?'#34c759':'#FF9500';
+function detectFOV(){ refreshWebOptics(); populateWebCameras().catch(console.error); }
+function updateFovStatus(){} // Old guessed presets are no longer offered.
+function refreshWebOptics(){
+  const key=webSignature();if(!key)return;
+  if(webInfo?.key===key)return;
+  if(isRecording)stopRecording();
+  let hfov=null;try{hfov=JSON.parse(localStorage.getItem('optical.web.calibration.'+key))?.hfov;}catch(e){}
+  const calibrated=Number.isFinite(hfov)&&hfov>5&&hfov<170;
+  webInfo={key,hfov:calibrated?hfov:null,source:calibrated?'calibrated':'unverified'};
+  S.phoneFOV=calibrated?hfov:65;
+  $('legacyFovControls').hidden=true;$('nativeOpticsControls').hidden=false;
+  document.querySelectorAll('.tab-btn')[4].textContent='CALIBRA';
+  $('nativeFovStatus').textContent=calibrated?'Calibrazione misurata':'Da calibrare · anteprima senza simulazione';
+  $('nativeCameraDetails').textContent=(video.srcObject.getVideoTracks()[0].label||'Fotocamera')+' · '+video.videoWidth+' × '+video.videoHeight+(calibrated?' · '+hfov.toFixed(2)+'°':'');
+  $('calibrationEditor').hidden=true;
+  $('webCalibrationNotice').hidden=calibrated;
+}
+async function populateWebCameras(){
+  const select=$('phoneCameraSel');select.innerHTML='';
+  const devices=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput');
+  for(const [i,d] of devices.entries()){
+    if(!d.deviceId)continue;
+    const option=document.createElement('option');option.value=d.deviceId;option.textContent=d.label||('Fotocamera '+(i+1));select.appendChild(option);
+  }
+  select.value=video.srcObject.getVideoTracks()[0].getSettings().deviceId||'';
+}
+function requireWebCalibration(){
+  refreshWebOptics();
+  if(webInfo?.source==='calibrated')return true;
+  openSettings();switchTab('fov',document.querySelectorAll('.tab-btn')[4]);return false;
+}
+function drawWebSource(context,frame,simulate=true){
+  const sw=Math.max(video.videoWidth,video.videoHeight),sh=Math.min(video.videoWidth,video.videoHeight);
+  const box=simulate?OpticalMath.project(sw,sh,S.phoneFOV,getHFOV(),frame):(()=>{
+    const scale=Math.min(frame.width/sw,frame.height/sh),width=sw*scale,height=sh*scale;
+    return {x:frame.x+(frame.width-width)/2,y:frame.y+(frame.height-height)/2,width,height};
+  })();
+  context.save();context.beginPath();context.rect(frame.x,frame.y,frame.width,frame.height);context.clip();
+  context.fillStyle='#132029';context.fillRect(frame.x,frame.y,frame.width,frame.height);
+  if(video.videoHeight>video.videoWidth){context.translate(box.x+box.width/2,box.y+box.height/2);context.rotate(-Math.PI/2);context.drawImage(video,-box.height/2,-box.width/2,box.height,box.width);}
+  else context.drawImage(video,box.x,box.y,box.width,box.height);
+  context.restore();
+}
+setInterval(()=>{
+  if(nativeCamera||!cameraReady||video.readyState<2)return;
+  refreshWebOptics();
+  if(webInfo?.source==='calibrated'){
+    const r=getFrameRect(),box=OpticalMath.project(Math.max(video.videoWidth,video.videoHeight),Math.min(video.videoWidth,video.videoHeight),S.phoneFOV,getHFOV(),{x:0,y:0,width:r.fW,height:r.fH});
+    $('nativeCoverage').textContent=box.covered?'Il frame è coperto dalla fotocamera.':'La parte esterna alla copertura resta vuota: la fotocamera non può riprenderla.';
+  }
+},500);
+
+// Native capture owns the physical camera, preview and media geometry.
+let nativeCamera=false,nativeCameraInfo=null,nativeConfiguration=Promise.resolve();
+let nativeConfigKey='',nativeConfigTimer=null,nativeStopping=null,calibrationKey=null,nativeGeneration=0,photoInProgress=false,nativeSuspended=false;
+function nativeOptions(){
+  const r=getFrameRect();
+  return {hfov:getHFOV(),aspect:getAR().value,cameraID:S.phoneCameraID,x:r.fX,y:r.fY,width:r.fW,height:r.fH,orientation:(window.orientation??screen.orientation?.angle??0)+'|'+innerWidth+'x'+innerHeight};
+}
+function requestNativeConfiguration(){
+  if(!nativeCamera||isRecording||recordingStarting||nativeSuspended||document.visibilityState!=='visible')return;
+  clearTimeout(nativeConfigTimer);
+  nativeConfigTimer=setTimeout(()=>configureNativeCamera().catch(e=>{cameraReady=false;cameraMessage(e.message);}),100);
+}
+function configureNativeCamera(force=false){
+  if(!nativeCamera)return Promise.resolve();
+  clearTimeout(nativeConfigTimer);
+  const options=nativeOptions(),key=JSON.stringify(options);
+  if(!force&&key===nativeConfigKey)return nativeConfiguration;
+  nativeConfigKey=key;cameraReady=false;const generation=++nativeGeneration;
+  nativeConfiguration=nativeConfiguration.catch(()=>{}).then(()=>OpticalNative.cameraConfigure(options)).then(async info=>{
+    await OpticalNative.cameraWaitReady();
+    if(generation===nativeGeneration){
+      nativeCameraInfo=info;S.phoneFOV=info.hfov;
+      if(info.requestedCameraUnavailable){S.phoneCameraID='auto';saveSettings();}
+      cameraReady=true;cameraMessage('');updateNativeOpticsStatus();
+    }return info;
+  }).catch(error=>{if(generation===nativeGeneration)nativeConfigKey='';throw error;});
+  return nativeConfiguration;
+}
+function updateNativeOpticsStatus(){
+  if(!nativeCameraInfo)return;
+  const info=nativeCameraInfo,select=$('phoneCameraSel');
+  select.innerHTML='';
+  for(const option of [{id:'auto',name:'Automatica (principale / ultra-wide)'},...info.cameras]){
+    const element=document.createElement('option');element.value=option.id;element.textContent=option.name;select.appendChild(element);
+  }
+  select.value=S.phoneCameraID;
+  $('nativeFovStatus').textContent=info.source==='calibrated'?'Calibrazione misurata':'Dati del formato iOS';
+  $('nativeCameraDetails').textContent=info.name+' · '+info.width+' × '+info.height+' · '+info.hfov.toFixed(2)+'° orizzontali';
+  $('nativeCoverage').textContent=(info.requestedCameraUnavailable?'La fotocamera precedente non è disponibile. Selezionata Automatica. ':'')+(info.covered?'Il frame è coperto dalla fotocamera.':'La parte esterna alla copertura resta vuota: la fotocamera non può riprenderla.');
+}
+function onPhoneCameraChange(){if(!nativeCamera){webSelectedID=$('phoneCameraSel').value;localStorage.setItem('optical.web.camera',webSelectedID);webInfo=null;startCamera();return;}S.phoneCameraID=$('phoneCameraSel').value;saveSettings();requestNativeConfiguration();}
+async function beginCalibration(){
+  try{
+    if(!nativeCamera){
+      if(!cameraReady||video.readyState<2)throw new Error('Attendi la fotocamera.');
+      const image=document.createElement('canvas');image.width=Math.max(video.videoWidth,video.videoHeight);image.height=Math.min(video.videoWidth,video.videoHeight);
+      drawWebSource(image.getContext('2d'),{x:0,y:0,width:image.width,height:image.height},false);
+      webReference=webSignature();$('calibrationImage').src=image.toDataURL('image/jpeg',.95);
+      $('calibrationEditor').hidden=false;updateCalibrationGuides();return;
+    }
+    await configureNativeCamera();calibrationKey=nativeCameraInfo.calibrationKey;
+    $('calibrationImage').src=await OpticalNative.cameraSnapshot(true);
+    $('calibrationEditor').hidden=false;$('calibrationResult').textContent='';updateCalibrationGuides();
+  }catch(e){alert(e.message);}
+}
+function updateCalibrationGuides(){
+  const fraction=+$('calibrationSpan').value/100;
+  $('calibrationLeft').style.left=((1-fraction)*50)+'%';$('calibrationRight').style.left=((1+fraction)*50)+'%';
+  try{$('calibrationResult').textContent='Campo visivo misurato: '+OpticalMath.calibrationHFOV(+$('calibrationWidth').value,+$('calibrationDistance').value,fraction).toFixed(2)+'°';}
+  catch(e){$('calibrationResult').textContent=e.message;}
+}
+async function saveCalibration(){
+  try{
+    if(!nativeCamera){
+      if(!webReference||webReference!==webSignature())throw new Error('Fotocamera o formato cambiati. Acquisisci una nuova immagine.');
+      const hfov=OpticalMath.calibrationHFOV(+$('calibrationWidth').value,+$('calibrationDistance').value,+$('calibrationSpan').value/100);
+      localStorage.setItem('optical.web.calibration.'+webReference,JSON.stringify({hfov,measuredAt:new Date().toISOString()}));
+      webInfo=null;refreshWebOptics();return;
+    }
+    if(!nativeCameraInfo||calibrationKey!==nativeCameraInfo.calibrationKey)throw new Error('La fotocamera è cambiata. Acquisisci una nuova immagine di riferimento.');
+    const hfov=OpticalMath.calibrationHFOV(+$('calibrationWidth').value,+$('calibrationDistance').value,+$('calibrationSpan').value/100);
+    await OpticalNative.cameraCalibrate(hfov);await configureNativeCamera(true);$('calibrationEditor').hidden=true;
+  }catch(e){alert(e.message);}
+}
+async function resetNativeCalibration(){
+  if(!nativeCamera){try{const key=webSignature();if(key)localStorage.removeItem('optical.web.calibration.'+key);webInfo=null;refreshWebOptics();}catch(e){alert(e.message);}return;}
+  try{await OpticalNative.cameraCalibrate(null);await configureNativeCamera(true);$('calibrationEditor').hidden=true;}catch(e){alert(e.message);}
+}
+function lockCaptureControls(locked){
+  for(const el of document.querySelectorAll('#settModal button,#settModal select,#settModal input,#cameraMenuButton,#btnNext,#btnPrev,#shotBtn,#gallContainer')){
+    if(el.id==='gallContainer')el.style.pointerEvents=locked?'none':'';else el.disabled=locked;
+  }
+  if(!locked)updateSidebar();
+}
+async function startNativeRecording(){
+  recordingStarting=true;lockCaptureControls(true);
+  try{
+    await configureNativeCamera();
+    const {fX,fY,fW,fH}=getFrameRect(),width=1280,height=Math.round(width/getAR().value/2)*2;
+    const footer=Math.round(REC_META_H*width/fW/2)*2;
+    const overlay=document.createElement('canvas');overlay.width=width;overlay.height=height+footer;
+    const oc=overlay.getContext('2d');oc.drawImage(canvas,fX*DPR,fY*DPR,fW*DPR,fH*DPR,0,0,width,height);
+    drawExportMetadata(oc,fW,fH,REC_META_H,new Date().toLocaleString('it-IT'),width/fW);
+    await OpticalNative.cameraRecordStart({overlay:overlay.toDataURL('image/png').split(',')[1],footer,metadata:{meta:`${S.brand} ${getCam().model} | ${getSeries().name} ${getFocal()}mm | ${getAR().label}`,filename:'opticalpro_'+Date.now()+'.mp4',optical:{...nativeCameraInfo,targetHFOV:getHFOV()}}});
+    nativeSuspended=false;cameraReady=true;
+    isRecording=true;recSecs=0;recTimer=setInterval(()=>{recSecs++;updateRecBtn();},1000);updateRecBtn();
+  }catch(e){lockCaptureControls(false);alert('Registrazione non avviata: '+e.message);}
+  finally{recordingStarting=false;}
+}
+async function stopNativeRecording(){
+  if(nativeStopping)return nativeStopping;
+  nativeStopping=(async()=>{
+    try{
+      clearInterval(recTimer);$('recBtn').disabled=true;
+      const result=await OpticalNative.cameraRecordStop(),blob=result.blob,blobUrl=URL.createObjectURL(blob);
+      const entry={blob,blobUrl,duration:result.duration||0,mimeType:'video/mp4',meta:result.meta,filename:result.filename,optical:result.optical,nativeID:result.id};
+      entry.thumbUrl=await generateVideoThumb(blobUrl);videos.push(entry);await OpticalNative.saveGallery(screenshots,videos);
+      await OpticalNative.cameraRecordRelease(result.id);updateGalleryThumb();
+    }catch(e){alert('Registrazione non salvata: '+e.message);}
+    finally{isRecording=false;clearInterval(recTimer);recSecs=0;nativeStopping=null;$('recBtn').disabled=false;lockCaptureControls(false);updateRecBtn();requestNativeConfiguration();}
+  })();
+  return nativeStopping;
 }
 
 // ─── CAMERA ───────────────────────────────────────────────────────────────────
@@ -301,18 +462,24 @@ function startCamera(){
   cameraStartPromise=(async()=>{
     try{
       cameraReady=false;
+      if(window.OpticalNative&&await OpticalNative.cameraAvailable()){
+        nativeCamera=true;nativeSuspended=false;document.documentElement.classList.add('native-camera');
+        $('legacyFovControls').hidden=true;$('nativeOpticsControls').hidden=false;document.querySelectorAll('.tab-btn')[4].textContent='CALIBRA';
+        await configureNativeCamera(true);return;
+      }
       if(video.srcObject)video.srcObject.getTracks().forEach(t=>t.stop());
       if(!navigator.mediaDevices?.getUserMedia)throw new Error('Fotocamera non disponibile.');
       const stream=await navigator.mediaDevices.getUserMedia({
-        audio:window.OpticalNative?false:{echoCancellation:false,noiseSuppression:false},
-        video:{facingMode:S.facingMode,width:{ideal:3840},height:{ideal:2160}}
+        audio:false,
+        video:{...(webSelectedID?{deviceId:{exact:webSelectedID}}:{facingMode:{ideal:'environment'}}),width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:30},resizeMode:{ideal:'none'}}
       });
-      video.srcObject=stream;await video.play();detectFOV(stream);cameraReady=true;cameraMessage('');
+      video.srcObject=stream;await video.play();webInfo=null;detectFOV(stream);cameraReady=true;cameraMessage('');
     }catch(e){
+      if(!nativeCamera&&e.name==='OverconstrainedError'&&webSelectedID){webSelectedID='';localStorage.removeItem('optical.web.camera');cameraMessage('La fotocamera salvata non è disponibile. Premi Riprova per selezionarne una disponibile.');return;}
       console.error('Camera:',e);
-      cameraMessage(e.name==='NotAllowedError'
+      cameraMessage(nativeCamera?e.message:(e.name==='NotAllowedError'
         ?'Consenti l’accesso alla fotocamera nelle Impostazioni e premi Riprova.'
-        :'Fotocamera non disponibile. Controlla i permessi e riprova. Il simulatore non dispone della fotocamera dell’iPhone.');
+        :'Fotocamera non disponibile. Controlla i permessi e riprova.'));
     }finally{cameraStartPromise=null;}
   })();
   return cameraStartPromise;
@@ -320,7 +487,11 @@ function startCamera(){
 
 // ─── BLACK SCREEN RECOVERY ────────────────────────────────────────────────────
 function checkAndRestartCamera(){
-  if(document.visibilityState!=='visible'||cameraStartPromise||isRecording)return;
+  if(document.visibilityState!=='visible'||cameraStartPromise||recordingStarting)return;
+  if(nativeCamera)nativeSuspended=false;
+  if(nativeCamera&&isRecording){stopNativeRecording();return;}
+  if(isRecording)return;
+  if(nativeCamera){configureNativeCamera(true).catch(e=>cameraMessage(e.message));return;}
   if(!video.srcObject||!video.srcObject.active||video.paused||video.readyState<2){
     startCamera();
   }
@@ -328,6 +499,15 @@ function checkAndRestartCamera(){
 document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='visible')checkAndRestartCamera();
 });
+window.opticalInterfaceChanged=()=>{
+  applyLandscape();
+  if(nativeCamera&&!isRecording&&!recordingStarting)configureNativeCamera(true).catch(e=>{cameraReady=false;cameraMessage(e.message);});
+};
+window.opticalDidBecomeActive=()=>{
+  nativeSuspended=false;
+  if(cameraStartPromise)cameraStartPromise.finally(()=>checkAndRestartCamera());
+  else checkAndRestartCamera();
+};
 window.addEventListener('pageshow',()=>checkAndRestartCamera());
 window.addEventListener('focus',()=>setTimeout(checkAndRestartCamera,400));
 
@@ -339,12 +519,15 @@ const videos=[];
 let recordingStarting=false;
 
 window.opticalPause=()=>{
-  if(isRecording)stopRecording();
+  if(nativeCamera){cameraReady=false;nativeSuspended=true;nativeConfigKey='';nativeGeneration++;}
+  if(isRecording){const stopped=stopRecording();if(nativeCamera)Promise.resolve(stopped).finally(()=>OpticalNative.cameraPause());}
+  else if(nativeCamera)OpticalNative.cameraPause();
 };
 
 function toggleRecording(){
-  if(recordingStarting)return;
+  if(recordingStarting||photoInProgress)return;
   if(!cameraReady){cameraMessage('Attiva la fotocamera prima di registrare.');return;}
+  if(!nativeCamera&&!isRecording&&!requireWebCalibration())return;
   if(!isRecording&&videos.length>=MAX_VIDEOS){showMemoryFull();return;}
   isRecording?stopRecording():startRecording();
 }
@@ -363,15 +546,7 @@ function recDrawLoop(){
 
   // Video (cropped to frame area, translated to 0,0)
   if(video.readyState>=2){
-    const cinemaFOV=getHFOV();
-    const vZoom=Math.tan(S.phoneFOV*Math.PI/360)/Math.tan(cinemaFOV*Math.PI/360);
-    const nW=video.videoWidth||logW,nH=video.videoHeight||logH;
-    const cov=Math.max(logW/nW,logH/nH);
-    const dW=nW*cov*vZoom,dH=nH*cov*vZoom;
-    recCtx.save();
-    recCtx.beginPath();recCtx.rect(0,0,rW,rH);recCtx.clip();
-    recCtx.drawImage(video,(logW-dW)/2-recFX,(logH-dH)/2-recFY,dW,dH);
-    recCtx.restore();
+    drawWebSource(recCtx,{x:0,y:0,width:rW,height:rH});
   }
 
   // Overlays (same as main draw but at 0,0 coords, no info corners)
@@ -431,10 +606,11 @@ function recDrawLoop(){
 }
 
 async function startRecording(){
-  recordingStarting=true;
+  if(nativeCamera)return startNativeRecording();
+  recordingStarting=true;lockCaptureControls(true);
   try{
     if(typeof MediaRecorder==='undefined')throw new Error('Registrazione non supportata su questo dispositivo.');
-    if(window.OpticalNative&&!video.srcObject.getAudioTracks().length){
+    if(!video.srcObject.getAudioTracks().length){
       try{
         const audio=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false}});
         audio.getAudioTracks().forEach(t=>video.srcObject.addTrack(t));
@@ -458,8 +634,7 @@ async function startRecording(){
     if(recCanvas.captureStream){
       try{stream=recCanvas.captureStream(30);}catch(e){}
     }
-    if(!stream&&video.srcObject)stream=new MediaStream(video.srcObject.getVideoTracks());
-    if(!stream){alert('Registrazione non disponibile.');isRecording=false;cancelAnimationFrame(recRAF);return;}
+    if(!stream)throw new Error('Questo browser non supporta la registrazione del mirino.');
     if(video.srcObject)video.srcObject.getAudioTracks().forEach(t=>{try{stream.addTrack(t);}catch(e){}});
 
     const mimes=['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm',''];
@@ -482,13 +657,14 @@ async function startRecording(){
         blobUrl,blob,
         meta:`${S.brand} ${cam.model} | ${s.name} ${f}mm | ${ar.label}`,
         filename:`opticalpro_${S.brand}_${f}mm_${ar.label.replace(':','x')}_${ts}.${ext}`,
-        duration:dur,mimeType:finalMime
+        duration:dur,mimeType:finalMime,optical:{...webInfo,targetHFOV:getHFOV()}
       };
       generateVideoThumb(blobUrl).then(thumb=>{entry.thumbUrl=thumb;renderGalleryGrid();updateGalleryThumb();});
       videos.push(entry);
       persistGallery();
       updateGalleryThumb();
-      isRecording=false;clearInterval(recTimer);recSecs=0;updateRecBtn();
+      isRecording=false;lockCaptureControls(false);clearInterval(recTimer);recSecs=0;updateRecBtn();
+      video.srcObject?.getAudioTracks().forEach(t=>{t.stop();video.srcObject.removeTrack(t);});
     };
     mediaRecorder.onerror=e=>{console.error('MediaRecorder:',e);stopRecording();};
     mediaRecorder.start(500);
@@ -496,12 +672,13 @@ async function startRecording(){
     updateRecBtn();
   }catch(e){
     console.error('startRecording:',e);
-    isRecording=false;cancelAnimationFrame(recRAF);
+    isRecording=false;lockCaptureControls(false);cancelAnimationFrame(recRAF);
     alert('Errore: '+e.message);
   }finally{recordingStarting=false;}
 }
 
 function stopRecording(){
+  if(nativeCamera)return stopNativeRecording();
   if(mediaRecorder&&mediaRecorder.state!=='inactive')mediaRecorder.stop();
   clearInterval(recTimer);
 }
@@ -510,7 +687,7 @@ function updateRecBtn(){$('recBtn').classList.toggle('recording',isRecording);}
 function generateVideoThumb(blobUrl){
   return new Promise(resolve=>{
     const v=document.createElement('video');
-    v.src=blobUrl;v.muted=true;v.playsInline=true;
+    v.preload='auto';v.src=blobUrl;v.muted=true;v.playsInline=true;
     v.addEventListener('loadeddata',()=>{
       v.currentTime=0.1;
       v.addEventListener('seeked',()=>{
@@ -553,33 +730,11 @@ function draw(){
   // BG
   ctx.fillStyle='#050505';ctx.fillRect(0,0,logW,logH);
 
-  // Video
-  if(video.readyState>=2){
-    const vW=video.videoWidth||logW,vH=video.videoHeight||logH;
-    ctx.save();ctx.beginPath();ctx.rect(fX,fY,fW,fH);ctx.clip();
-    if(vH>vW){
-      // Stream in portrait: ruota -90° per riempire correttamente il canvas landscape
-      const scale=Math.max(logH/vW,logW/vH)*vZoom;
-      const dW=vW*scale,dH=vH*scale;
-      ctx.save();ctx.translate(logW/2,logH/2);ctx.rotate(-Math.PI/2);
-      ctx.drawImage(video,-dW/2,-dH/2,dW,dH);
-      ctx.restore();
-    } else {
-      const cov=Math.max(logW/vW,logH/vH);
-      const dW=vW*cov*vZoom,dH=vH*cov*vZoom;
-      ctx.drawImage(video,(logW-dW)/2,(logH-dH)/2,dW,dH);
-    }
-    ctx.restore();
-  }
-
-  // Wide FOV indicator
-  if(vZoom<1){
-    ctx.save();ctx.beginPath();ctx.rect(fX,fY,fW,fH);ctx.clip();
-    ctx.fillStyle='rgba(255,149,0,.03)';ctx.fillRect(fX,fY,fW,fH);
-    const pW=fW*vZoom,pH=fH*vZoom,pX=fX+(fW-pW)/2,pY=fY+(fH-pH)/2;
-    ctx.setLineDash([5,5]);ctx.strokeStyle='rgba(255,149,0,.3)';ctx.lineWidth=1;
-    ctx.strokeRect(pX,pY,pW,pH);ctx.setLineDash([]);
-    ctx.restore();
+  // The native preview and exports use the same centred, format-based projection.
+  if(nativeCamera){
+    ctx.clearRect(fX,fY,fW,fH);
+  }else if(video.readyState>=2){
+    drawWebSource(ctx,{x:fX,y:fY,width:fW,height:fH},webInfo?.source==='calibrated');
   }
 
   // Letterbox
@@ -691,10 +846,12 @@ function draw(){
 
 // ─── SCREENSHOT ───────────────────────────────────────────────────────────────
 function captureScreenshot(){
+  if(isRecording||recordingStarting||photoInProgress)return;
   if(!cameraReady){cameraMessage('Attiva la fotocamera prima di scattare.');return;}
+  if(!nativeCamera&&!requireWebCalibration())return;
   if(screenshots.length>=MAX_SHOTS){showMemoryFull();return;}
-  noTextOverlay=true;
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{doCapture();noTextOverlay=false;}));
+  noTextOverlay=true;photoInProgress=true;if(nativeCamera)lockCaptureControls(true);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{Promise.resolve(doCapture()).catch(e=>alert('Foto non acquisita: '+e.message)).finally(()=>{noTextOverlay=false;photoInProgress=false;if(nativeCamera)lockCaptureControls(false);});}));
 }
 
 // Keep exported information in a separate two-row footer, with bounded columns.
@@ -716,12 +873,16 @@ function drawExportMetadata(context,width,frameHeight,barHeight,dateText,scale=1
   context.restore();
 }
 
-function doCapture(){
+async function doCapture(){
   const{fX,fY,fW,fH}=getFrameRect();
   const metaH=36,pFX=fX*DPR,pFY=fY*DPR,pFW=fW*DPR,pFH=fH*DPR,pMH=metaH*DPR;
   const tmp=document.createElement('canvas');
   tmp.width=Math.round(pFW);tmp.height=Math.round(pFH+pMH);
   const tc=tmp.getContext('2d');
+  if(nativeCamera){
+    await configureNativeCamera();const image=new Image();image.src=await OpticalNative.cameraSnapshot(false);await image.decode();
+    tc.drawImage(image,0,0,Math.round(pFW),Math.round(pFH));
+  }
   tc.drawImage(canvas,Math.round(pFX),Math.round(pFY),Math.round(pFW),Math.round(pFH),0,0,Math.round(pFW),Math.round(pFH));
   const cam=getCam(),m=getMode(),s=getSeries(),f=getFocal(),ar=getAR();
   const now=new Date();
@@ -730,7 +891,11 @@ function doCapture(){
   const dataUrl=tmp.toDataURL('image/jpeg',.88);
   const ts=`${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`;
   const shot={dataUrl,meta:`${S.brand} ${cam.model} | ${s.name} ${f}mm | ${ar.label}`,filename:`opticalpro_${S.brand}_${f}mm_${ar.label.replace(':','x')}_${ts}.jpg`};
-  screenshots.push(shot);saveScreenshots();updateGalleryThumb();
+  if(!nativeCamera)shot.optical={...webInfo,targetHFOV:getHFOV()};
+  if(nativeCamera)shot.optical={...nativeCameraInfo,targetHFOV:getHFOV()};
+  screenshots.push(shot);
+  if(nativeCamera)await OpticalNative.saveGallery(screenshots,videos);else saveScreenshots();
+  updateGalleryThumb();
   const fl=$('shotFlash');fl.classList.add('show');setTimeout(()=>fl.classList.remove('show'),150);
 }
 
@@ -900,7 +1065,7 @@ async function saveCurrentItem(){
 }
 
 // ─── SETTINGS MODAL ───────────────────────────────────────────────────────────
-function openSettings(){$('settBack').classList.add('open');$('settModal').classList.add('open');}
+function openSettings(){if(isRecording||recordingStarting)return;$('settBack').classList.add('open');$('settModal').classList.add('open');}
 function closeSettings(){$('settBack').classList.remove('open');$('settModal').classList.remove('open');}
 
 // ─── UI BUILDERS ─────────────────────────────────────────────────────────────
@@ -939,10 +1104,7 @@ function buildOverlayChips(){
   const defs=[{k:'frame',l:'Frame'},{k:'camera',l:'Camera'},{k:'lens',l:'Lens'},{k:'ar',l:'A. Ratio'},{k:'safe',l:'Safe Area'},{k:'grid',l:'Grid 3×3'},{k:'cross',l:'Cross'},];
   $('overlayChips').innerHTML=defs.map(d=>`<button class="ov-chip${S.overlays[d.k]?' active':''}" onclick="toggleOv('${d.k}')">${d.l}</button>`).join('');
 }
-function buildFovPresets(){
-  const p=[['iPhone Wide',65],['iPhone UW',100],['iPhone 2x',48],['Android',68]];
-  $('fovPresets').innerHTML=p.map(([l,v])=>`<button class="chip${S.phoneFOV===v?' active':''}" onclick="setFovPreset(${v})">${l}</button>`).join('');
-}
+function buildFovPresets(){}
 function updateSidebar(){
   const cam=getCam(),m=getMode(),s=getSeries(),f=getFocal();
   $('sCamName').textContent=cam.model;
@@ -953,6 +1115,7 @@ function updateSidebar(){
   const enabled=enabledFocalIndices();
   $('btnPrev').disabled=!enabled.some(i=>i<S.focalIdx);
   $('btnNext').disabled=!enabled.some(i=>i>S.focalIdx);
+  if(nativeCamera)requestNativeConfiguration();
 }
 function buildAll(){
   buildBrandChips();buildCamSel();buildModeSel();buildSensorMeta();
