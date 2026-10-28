@@ -266,13 +266,13 @@ window.addEventListener('resize',applyLandscape);
 window.addEventListener('orientationchange',()=>setTimeout(applyLandscape,150));
 
 // Browser calibration belongs to the delivered camera stream, never a phone-model guess.
-const anonymousTracks=new WeakMap();
+const anonymousTracks=new Map();
 let webInfo=null,webReference=null,webSelectedID=localStorage.getItem('optical.web.camera')||'';
 function webSignature(){
   const track=video.srcObject?.getVideoTracks()[0];
   if(!track||track.readyState!=='live')return null;
   const t=track.getSettings();
-  if(!t.deviceId){if(!anonymousTracks.has(track))anonymousTracks.set(track,crypto.randomUUID());t.deviceId='session:'+anonymousTracks.get(track);}
+  if(!t.deviceId){const identity=track.id||track;if(!anonymousTracks.has(identity))anonymousTracks.set(identity,crypto.randomUUID());t.deviceId='session:'+anonymousTracks.get(identity);}
   return OpticalMath.browserCalibrationKey({...t,width:video.videoWidth,height:video.videoHeight});
 }
 function detectFOV(){ refreshWebOptics(); populateWebCameras().catch(console.error); }
@@ -284,6 +284,7 @@ function refreshWebOptics(){
   let hfov=null;try{hfov=JSON.parse(localStorage.getItem('optical.web.calibration.'+key))?.hfov;}catch(e){}
   const calibrated=Number.isFinite(hfov)&&hfov>5&&hfov<170;
   webInfo={key,hfov:calibrated?hfov:null,source:calibrated?'calibrated':'unverified'};
+  if(calibrated){try{const saved=JSON.parse(localStorage.getItem('optical.web.calibration.'+key));webInfo.method=saved.method||'manual';webInfo.quality={rms:saved.rms,samples:saved.samples,agreement:saved.agreement};}catch(e){}}
   S.phoneFOV=calibrated?hfov:65;
   $('legacyFovControls').hidden=true;$('nativeOpticsControls').hidden=false;
   document.querySelectorAll('.tab-btn')[4].textContent='CALIBRA';
