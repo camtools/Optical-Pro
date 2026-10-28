@@ -4,9 +4,9 @@
   function classify(label='',facing=[]){
     const name=String(label).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
     const modes=Array.isArray(facing)?facing:[facing];
-    const front=modes.includes('user')||/front|facetime|anteriore|frontal|avant|vorder/.test(name);
-    const rear=!front&&(modes.includes('environment')||/back|rear|posteriore|arriere|trasera|ruck|environment/.test(name));
-    const role=front?'front':/ultrawide|ultragrandangol|ultragranangul|ultragrandangle|ultragranangular|ultraweit/.test(name.replace(/ /g,''))?'ultra':/telephoto|teleob|teleobjectif/.test(name)?'tele':/triple|dual|tripla|doppia|double|dreifach/.test(name)?'virtual':'main';
+    const front=modes.includes('user')||/front|facetime|truedepth|anteriore|frontal|avant|vorder/.test(name);
+    const rear=!front&&(modes.includes('environment')||/back|rear|retro|posterior|arriere|trasera|ruck|hinter|environment/.test(name));
+    const role=front?'front':/ultrawide|ultragrandangol|ultragranangul|ultragrandangle|ultragranangular|ultraweit/.test(name.replace(/ /g,''))?'ultra':/telephoto|teleob|teleobjectif/.test(name)?'tele':/triple|dual|tripla|doppia|double|doble|dreifach/.test(name)?'virtual':'main';
     return {role,rear:rear||role==='ultra'||role==='tele'};
   }
   function estimate(label,zoom=1){

@@ -13,4 +13,7 @@ for(const label of ['Fotocamera ultra-grandangolare posteriore','Back Ultra Wide
 assert.equal(p.classify('Front Camera',['user']).role,'front');
 assert.equal(p.classify('camera 1',['environment']).rear,true);
 assert.equal(p.classify('USB Webcam').rear,false);
+assert.equal(p.classify('Fotocamera sul retro').rear,true);
+assert.equal(p.classify('Fotocamera tripla sul retro').role,'virtual');
+assert.equal(p.classify('TrueDepth Camera').role,'front');
 console.log('PASS: corrected FOV, both axes, mixed source aspects, no selfie/tele/virtual preference, localized camera labels');
