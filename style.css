@@ -183,22 +183,6 @@ input[type=range]{accent-color:var(--orange);width:100%;}
 html.native-camera,html.native-camera body{background:transparent;}
 [hidden]{display:none!important;}
 #nativeFovStatus{font-weight:700;color:#fff;margin-bottom:6px;}
-#calibrationEditor{margin-top:14px;border-top:1px solid #555;padding-top:10px;}
-#calibrationPicture{position:relative;margin:10px 0;overflow:hidden;background:#111;}
-#calibrationImage{display:block;width:100%;height:auto;}
-#calibrationLeft,#calibrationRight{position:absolute;top:0;bottom:0;width:2px;background:#00e6ff;box-shadow:0 0 0 1px #000;pointer-events:none;}
-.calibration-measures{display:flex;gap:10px;margin:10px 0;color:#fff;font:12px -apple-system,sans-serif;}
-.calibration-measures label{flex:1;min-width:0;}
-.calibration-measures input{display:block;width:100%;margin-top:5px;padding:8px;border:1px solid #888;border-radius:8px;background:#202020;color:#fff;font:16px -apple-system,sans-serif;}
 
-#webCalibrationNotice{position:absolute;z-index:8;left:10px;bottom:12px;max-width:calc(100% - 110px);padding:10px 14px;border:1px solid #ff9500;border-radius:10px;background:#151515;color:#fff;font:600 13px system-ui;cursor:pointer}
 [hidden]{display:none!important}
-
-.primary-calibration{background:#ff9500!important;color:#080808!important;border-color:#ff9500!important;font-weight:700}
-a.chip{text-decoration:none;display:inline-block}
-#manualCalibration{margin-top:16px;color:#fff;font:12px system-ui}#manualCalibration summary{cursor:pointer;padding:8px 0}
-#guidedCalibration{position:fixed;inset:0;z-index:3000;background:#080808;color:#fff;padding:max(12px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left));overflow:auto;font-family:system-ui}
-#guidedCalibration header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}#guidedCalibration h2{font-size:17px;margin:0}
-.guided-layout{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(240px,1fr);gap:18px;align-items:start}.guided-camera{background:#151515;border-radius:10px;overflow:hidden;line-height:0}.guided-camera canvas{display:block;width:100%;height:auto;max-height:calc(100dvh - 90px);object-fit:contain}
-.guided-instructions p{font-size:13px;line-height:1.45;margin:0 0 12px}#guidedCount{font-size:24px;color:#ff9500}#guidedProgress{width:100%;accent-color:#ff9500;margin:8px 0 12px}#guidedStatus{min-height:3em;font-weight:600}#guidedResult{color:#43e47b}
-@media(orientation:portrait){.guided-layout{grid-template-columns:1fr}.guided-camera canvas{max-height:42dvh}.guided-instructions{max-width:600px}}
+#fovSlider{flex:1;min-width:0;accent-color:#ff9500}#fovVal{min-width:58px;text-align:right}#nativeFovStatus{margin-top:10px}
