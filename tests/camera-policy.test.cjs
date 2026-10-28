@@ -1,0 +1,16 @@
+const assert=require('node:assert/strict'),p=require('../web-camera-policy.js');
+const cam=(id,hfov,role='main',width=1920,height=1080)=>({id,hfov,role,width,height,autoEligible:true});
+const choose=(c,t,a=1.85)=>p.choose(c,t,a)?.id;
+assert.equal(choose([cam('main',73),cam('ultra',107,'ultra')],90.3),'ultra');
+assert.equal(choose([cam('main',73),cam('ultra',107,'ultra')],32),'main');
+assert.equal(choose([cam('main',64),cam('ultra',107,'ultra')],67.7),'ultra');
+assert.equal(choose([cam('main',70),cam('ultra',110,'ultra')],60,1),'ultra');
+assert.equal(choose([cam('main',70),cam('ultra',110,'ultra')],150),'ultra');
+assert.equal(choose([cam('front',160,'front'),cam('tele',48,'tele'),cam('main',65)],30),'main');
+assert.equal(choose([cam('virtual',60,'virtual'),cam('main',70)],30),'main');
+assert.equal(choose([cam('main',60, 'main',1920,1080),cam('ultra',65,'ultra',1440,1080)],60,1),'ultra');
+for(const label of ['Fotocamera ultra-grandangolare posteriore','Back Ultra Wide Camera','Caméra ultra-grand-angle arrière','Cámara ultra gran angular trasera'])assert.equal(p.classify(label).role,'ultra',label);
+assert.equal(p.classify('Front Camera',['user']).role,'front');
+assert.equal(p.classify('camera 1',['environment']).rear,true);
+assert.equal(p.classify('USB Webcam').rear,false);
+console.log('PASS: corrected FOV, both axes, mixed source aspects, no selfie/tele/virtual preference, localized camera labels');

@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="icon" href="icon.png">
 <title>Optical Pro</title>
-<link rel="stylesheet" href="style.css?v=20261028-22">
+<link rel="stylesheet" href="style.css?v=20261028-web23">
 </head>
 <body>
 
@@ -25,6 +25,7 @@
 <div id="app" style="display:none">
   <video id="video" muted playsinline autoplay></video>
   <canvas id="canvas"></canvas>
+  <div id="webCameraSwitchStatus" role="status" hidden>Cambio fotocamera…</div>
   <div id="shotFlash"></div>
   <div id="memoryFull">Memoria piena<br><span>Elimina foto o video dalla galleria</span></div>
 
@@ -96,9 +97,10 @@
           <div class="row"><span class="lbl">Telefono</span><div class="body"><select id="phoneCameraSel" aria-label="Fotocamera del telefono" onchange="onPhoneCameraChange()"></select></div></div>
           <div class="meta" id="nativeFovStatus" role="status">Attendo la fotocamera…</div>
           <div class="hint" id="nativeCameraDetails"></div>
-          <div class="row" style="margin-top:12px"><label class="lbl" for="fovSlider">FOV</label><div class="body fov-row"><input type="range" min="5.1" max="169.9" step="0.1" value="65" id="fovSlider" disabled oninput="onFovChange()" onchange="commitFovChange()"><output class="fov-val" id="fovVal" for="fovSlider">65°</output></div></div>
-          <p class="hint" id="fovExplanation">L’automatico è una stima indicativa, non una misura del telefono. Puoi regolare il FOV con il cursore; la modifica resta salvata per questa fotocamera e formato.</p>
+          <div class="row" style="margin-top:12px;align-items:center"><label class="lbl" style="padding-top:0" for="fovSlider">FOV</label><div class="body fov-row"><input type="range" min="5.1" max="169.9" step="0.1" value="65" id="fovSlider" disabled oninput="onFovChange()" onchange="commitFovChange()"><output class="fov-val" id="fovVal" for="fovSlider">65°</output></div></div>
+          <p class="hint" id="fovExplanation">L’automatico è una stima indicativa, non una misura del telefono. Puoi regolare il FOV con il cursore; la modifica resta salvata per questa fotocamera e formato. La selezione Automatica mantiene attivo lo switch tra le camere disponibili.</p>
           <button class="chip" style="margin-top:12px" onclick="resetFovAuto()">Ripristina automatico</button>
+          <button class="chip" id="webRetryCameras" hidden style="margin-top:12px" onclick="startCamera(true)">Riprova cambio camera</button>
           <p class="hint" id="nativeCoverage" style="margin-top:12px"></p>
         </div>
       </div>
@@ -147,8 +149,9 @@
 
 </div><!-- /app -->
 
-<script src="optics.js?v=20261028-22"></script>
+<script src="web-camera-policy.js?v=20261028-web23"></script>
+<script src="optics.js?v=20261028-web23"></script>
 
-<script src="script.js?v=20261028-22"></script>
+<script src="script.js?v=20261028-web23"></script>
 </body>
 </html>

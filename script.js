@@ -250,7 +250,7 @@ function applyLandscape(){
     ?`position:fixed;width:${vh}px;height:${vw}px;top:${(vh-vw)/2}px;left:-${(vh-vw)/2}px;transform:rotate(90deg);transform-origin:center center;overflow:hidden;`
     :'position:fixed;top:0;left:0;width:100%;height:100%;overflow:hidden;';
   resizeCanvas();
-  if(nativeCamera)requestNativeConfiguration();
+  if(nativeCamera)requestNativeConfiguration();else requestWebCameraSelection();
 }
 
 function resizeCanvas(){
@@ -265,46 +265,126 @@ function resizeCanvas(){
 window.addEventListener('resize',applyLandscape);
 window.addEventListener('orientationchange',()=>setTimeout(applyLandscape,150));
 
-// Browser calibration belongs to the delivered camera stream, never a phone-model guess.
-const anonymousTracks=new Map();
-let webInfo=null,webReference=null,webSelectedID=localStorage.getItem('optical.web.camera')||'';
+// Automatic selection only switches actual camera IDs exposed by the browser.
+const anonymousTracks=new Map(),webObserved=new Map(),webBlocked=new Set();
+let webInfo=null,webSelectedID='auto',webDevices=[],webSwitchPending=false,webSelectionTimer=null,webCameraEpoch=0,webCameraWarning='',webCurrentRequestID='',webDevicesDirty=false;
+try{
+  for(const [id,info] of Object.entries(JSON.parse(localStorage.getItem('optical.web.camera-formats.v1'))||{}))webObserved.set(id,info);
+  // Earlier versions had no automatic camera option. Enable it once, retaining FOVs.
+  if(!localStorage.getItem('optical.web.auto-camera.v1')){localStorage.setItem('optical.web.camera','auto');localStorage.setItem('optical.web.auto-camera.v1','1');}
+  webSelectedID=localStorage.getItem('optical.web.camera')||'auto';
+}catch(e){}
+function activeWebTrack(){return video.srcObject?.getVideoTracks()[0];}
+function activeWebID(){return activeWebTrack()?.getSettings().deviceId||webCurrentRequestID||'';}
+function hasWebStream(){return !!(activeWebTrack()?.readyState==='live'&&video.srcObject?.active&&video.readyState>=2&&!video.paused);}
 function webSignature(){
-  const track=video.srcObject?.getVideoTracks()[0];
-  if(!track||track.readyState!=='live')return null;
-  const t=track.getSettings();
+  const track=activeWebTrack();if(!track||track.readyState!=='live')return null;
+  const t={...track.getSettings()};
   if(!t.deviceId){const identity=track.id||track;if(!anonymousTracks.has(identity))anonymousTracks.set(identity,crypto.randomUUID());t.deviceId='session:'+anonymousTracks.get(identity);}
   return OpticalMath.browserCalibrationKey({...t,width:video.videoWidth,height:video.videoHeight});
 }
-function detectFOV(){ refreshWebOptics(); populateWebCameras().catch(console.error); }
-function updateFovStatus(){}
-function estimatedWebHFOV(){
-  const track=video.srcObject?.getVideoTracks()[0],label=(track?.label||'').toLowerCase();
-  const base=/ultra.?wide|ultragrandangol|ultra.?grand.?angle|ultraweit/.test(label)?100:/telephoto|teleob|téléobjectif/.test(label)?48:/front|face.?time|anteriore/.test(label)?62:65;
-  const zoom=Number(track?.getSettings().zoom)||1;
-  return 2*Math.atan(Math.tan(base*Math.PI/360)/Math.max(1,zoom))*180/Math.PI;
+function storedWebFov(key){
+  try{const saved=JSON.parse(localStorage.getItem('optical.web.fov.'+key))||JSON.parse(localStorage.getItem('optical.web.calibration.'+key));if(Number.isFinite(saved?.hfov)&&saved.hfov>=5.1&&saved.hfov<=169.9)return saved.hfov;}catch(e){}
+  return null;
 }
+function rememberWebFormat(){
+  const track=activeWebTrack(),settings=track?.getSettings();if(!settings?.deviceId||!webInfo)return;
+  webObserved.set(settings.deviceId,{key:webInfo.key,label:track.label||'',width:Math.max(video.videoWidth,video.videoHeight),height:Math.min(video.videoWidth,video.videoHeight),facingMode:settings.facingMode,zoom:settings.zoom});
+  try{localStorage.setItem('optical.web.camera-formats.v1',JSON.stringify(Object.fromEntries(webObserved)));}catch(e){}
+}
+function detectFOV(){refreshWebOptics();}
+function updateFovStatus(){}
 function refreshWebOptics(){
-  const key=webSignature();if(!key)return;
-  if(webInfo?.key===key)return;
+  const key=webSignature();if(!key||webInfo?.key===key)return;
   if(isRecording)stopRecording();
-  let saved;try{saved=JSON.parse(localStorage.getItem('optical.web.fov.'+key))||JSON.parse(localStorage.getItem('optical.web.calibration.'+key));}catch(e){}
-  const manual=Number.isFinite(saved?.hfov)&&saved.hfov>=5.1&&saved.hfov<=169.9;
-  const hfov=manual?saved.hfov:estimatedWebHFOV();
-  webInfo={key,hfov,source:manual?'manual':'estimated',method:manual?'slider':'browser-estimate'};
-  S.phoneFOV=hfov;S.fovSource=manual?'manual':'estimated';
-  $('fovSlider').disabled=isRecording||recordingStarting;$('fovSlider').min=5.1;$('fovSlider').max=169.9;$('fovSlider').value=hfov;
-  $('fovVal').textContent=hfov.toFixed(1)+'°';
-  $('nativeFovStatus').textContent=manual?'Regolazione manuale':'Automatico · FOV stimato';
-  $('nativeCameraDetails').textContent=(video.srcObject.getVideoTracks()[0].label||'Fotocamera')+' · '+video.videoWidth+' × '+video.videoHeight;
+  const track=activeWebTrack(),settings=track.getSettings(),saved=storedWebFov(key),hfov=saved??WebCameraPolicy.estimate(track.label,settings.zoom);
+  webInfo={key,hfov,source:saved!==null?'manual':'estimated',method:saved!==null?'slider':'browser-estimate',cameraID:settings.deviceId||null,name:track.label||'Fotocamera',width:video.videoWidth,height:video.videoHeight};
+  S.phoneFOV=hfov;S.fovSource=webInfo.source;rememberWebFormat();updateWebCameraStatus();
+}
+function updateWebCameraStatus(){
+  if(!webInfo)return;
+  $('phoneCameraSel').value=webSelectedID;
+  $('phoneCameraSel').disabled=webSwitchPending||isRecording||recordingStarting||photoInProgress;
+  $('fovSlider').disabled=webSwitchPending||isRecording||recordingStarting||photoInProgress;$('fovSlider').min=5.1;$('fovSlider').max=169.9;$('fovSlider').value=webInfo.hfov;
+  $('fovVal').textContent=webInfo.hfov.toFixed(1)+'°';
+  $('nativeFovStatus').textContent=webSwitchPending?'Cambio fotocamera…':webInfo.source==='manual'?'Regolazione manuale':'Automatico · FOV stimato';
+  $('nativeCameraDetails').textContent=webInfo.name+' · '+webInfo.width+' × '+webInfo.height;
+  $('webRetryCameras').hidden=webBlocked.size===0;
+  updateWebCoverage();
+}
+function webCameraCandidates(){
+  const current=activeWebID();
+  return webDevices.filter(d=>!webBlocked.has(d.deviceId)).map(d=>{
+    const known=webObserved.get(d.deviceId),c=WebCameraPolicy.classify(d.label,known?.facingMode||d.facing),isCurrent=d.deviceId===current;
+    const saved=known?storedWebFov(known.key):null;
+    return {id:d.deviceId,role:c.role,autoEligible:c.rear||(isCurrent&&!['front','tele'].includes(c.role)),current:isCurrent,hfov:isCurrent&&webInfo?webInfo.hfov:saved??WebCameraPolicy.estimate(d.label,known?.zoom),width:isCurrent&&webInfo?Math.max(webInfo.width,webInfo.height):known?.width||1920,height:isCurrent&&webInfo?Math.min(webInfo.width,webInfo.height):known?.height||1080};
+  });
+}
+function desiredWebCamera(){return WebCameraPolicy.choose(webCameraCandidates(),getHFOV(),getAR().value);}
+function updateWebCoverage(){
+  if(!webInfo||!video.videoWidth||!video.videoHeight)return;
+  const box=OpticalMath.project(Math.max(video.videoWidth,video.videoHeight),Math.min(video.videoWidth,video.videoHeight),webInfo.hfov,getHFOV(),{x:0,y:0,width:1000,height:1000/getAR().value});
+  const candidates=webCameraCandidates();
+  const limitation=webSelectedID==='auto'&&!candidates.some(c=>c.autoEligible&&c.role==='ultra')?' Il browser non espone un’ultragrandangolare distinta.':'';
+  $('nativeCoverage').textContent=(webCameraWarning?webCameraWarning+' ':'')+(box.covered?'Il frame è coperto dalla fotocamera.':'La parte esterna alla copertura resta vuota: la fotocamera non può riprenderla.')+limitation;
 }
 async function populateWebCameras(){
+  let devices=[];try{devices=(await navigator.mediaDevices.enumerateDevices?.()||[]).filter(d=>d.kind==='videoinput'&&d.deviceId);}catch(e){}webDevicesDirty=false;
+  webDevices=devices.map(d=>{let facing=[];try{facing=d.getCapabilities?.().facingMode||[];}catch(e){}return {deviceId:d.deviceId,label:d.label||'',facing};});
+  const track=activeWebTrack(),id=activeWebID();
+  if(id&&!webDevices.some(d=>d.deviceId===id))webDevices.push({deviceId:id,label:track.label||'',facing:track.getSettings().facingMode||[]});
   const select=$('phoneCameraSel');select.innerHTML='';
-  const devices=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput');
-  for(const [i,d] of devices.entries()){
-    if(!d.deviceId)continue;
-    const option=document.createElement('option');option.value=d.deviceId;option.textContent=d.label||('Fotocamera '+(i+1));select.appendChild(option);
+  for(const [i,d] of [{deviceId:'auto',label:'Automatica (camere disponibili)'},...webDevices].entries()){
+    const option=document.createElement('option');option.value=d.deviceId;option.textContent=d.label||('Fotocamera '+i);select.appendChild(option);
   }
-  select.value=video.srcObject.getVideoTracks()[0].getSettings().deviceId||'';
+  select.value=webSelectedID;
+}
+function setWebBusy(busy){webSwitchPending=busy;if(busy)cameraReady=false;$('webCameraSwitchStatus').hidden=!busy;updateWebCameraStatus();}
+function requestWebCameraSelection(){
+  if(nativeCamera||isRecording||recordingStarting||photoInProgress||document.visibilityState!=='visible'||!hasWebStream())return;
+  clearTimeout(webSelectionTimer);
+  if(cameraStartPromise)return;
+  const choice=webSelectedID==='auto'?desiredWebCamera():{id:webSelectedID};
+  if(!choice||choice.id===activeWebID()){setWebBusy(false);cameraReady=true;updateWebCoverage();return;}
+  setWebBusy(true);webSelectionTimer=setTimeout(()=>startCamera(),160);
+}
+async function openWebCamera(id,epoch){
+  video.srcObject?.getTracks().forEach(t=>t.stop());video.srcObject=null;webInfo=null;webCurrentRequestID='';cameraReady=false;
+  let stream;
+  try{
+    const constraints={audio:false,video:{...(id?{deviceId:{exact:id}}:{facingMode:{ideal:'environment'}}),width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:30},resizeMode:{ideal:'none'}}};
+    try{stream=await navigator.mediaDevices.getUserMedia(constraints);}catch(error){
+      if(error.name!=='NotReadableError')throw error;
+      await new Promise(resolve=>setTimeout(resolve,200));
+      if(epoch!==webCameraEpoch||document.visibilityState!=='visible')throw new DOMException('Cambio annullato','AbortError');
+      stream=await navigator.mediaDevices.getUserMedia(constraints);
+    }
+    if(epoch!==webCameraEpoch||document.visibilityState!=='visible'){stream.getTracks().forEach(t=>t.stop());throw new DOMException('Cambio annullato','AbortError');}
+    video.srcObject=stream;await video.play();await waitForVideoFrame();
+    if(epoch!==webCameraEpoch||document.visibilityState!=='visible')throw new DOMException('Cambio annullato','AbortError');
+    const track=activeWebTrack(),actual=track.getSettings();webCurrentRequestID=actual.deviceId||id||'';
+    if(id&&actual.deviceId&&actual.deviceId!==id){webBlocked.add(id);webCameraWarning='Il browser non ha consentito il cambio alla fotocamera richiesta.';}
+    refreshWebOptics();return {actualID:actual.deviceId||'',matched:!id||!actual.deviceId||actual.deviceId===id,facing:actual.facingMode};
+  }catch(error){stream?.getTracks().forEach(t=>t.stop());if(video.srcObject===stream)video.srcObject=null;throw error;}
+}
+async function settleWebAutoCamera(epoch){
+  if(webSelectedID!=='auto')return;
+  for(let tries=0;tries<Math.max(4,webDevices.length*2);tries++){
+    if(webDevicesDirty)await populateWebCameras();
+    const choice=desiredWebCamera(),previous=activeWebID();
+    if(!choice||choice.id===previous)return;
+    try{
+      const result=await openWebCamera(choice.id,epoch);
+      if(result.facing==='user')throw new Error('La fotocamera richiesta non è posteriore.');
+      if(!result.matched)return;
+    }catch(error){
+      if(error.name==='AbortError')throw error;
+      webBlocked.add(choice.id);webCameraWarning='Il browser non ha reso disponibile una delle fotocamere posteriori.';
+      await openWebCamera(previous||'',epoch);
+    }
+    if(epoch!==webCameraEpoch)throw new DOMException('Cambio annullato','AbortError');
+  }
+  webCameraWarning='Il browser non permette una selezione stabile delle camere. Scegli la fotocamera dal menu Telefono.';
 }
 function openFovSettings(){openSettings();switchTab('fov',document.querySelectorAll('.tab-btn')[4]);}
 function drawWebSource(context,frame,simulate=true){
@@ -320,12 +400,9 @@ function drawWebSource(context,frame,simulate=true){
   context.restore();
 }
 setInterval(()=>{
-  if(nativeCamera||!cameraReady||video.readyState<2)return;
-  refreshWebOptics();
-  if(webInfo){
-    const r=getFrameRect(),box=OpticalMath.project(Math.max(video.videoWidth,video.videoHeight),Math.min(video.videoWidth,video.videoHeight),S.phoneFOV,getHFOV(),{x:0,y:0,width:r.fW,height:r.fH});
-    $('nativeCoverage').textContent=box.covered?'Il frame è coperto dalla fotocamera.':'La parte esterna alla copertura resta vuota: la fotocamera non può riprenderla.';
-  }
+  if(nativeCamera||!cameraReady||photoInProgress||video.readyState<2)return;
+  const oldKey=webInfo?.key;refreshWebOptics();updateWebCoverage();
+  if(oldKey!==webInfo?.key)requestWebCameraSelection();
 },500);
 
 // Native capture owns the physical camera, preview and media geometry.
@@ -368,7 +445,7 @@ function updateNativeOpticsStatus(){
   $('nativeCameraDetails').textContent=info.name+' · '+info.width+' × '+info.height+' · '+info.hfov.toFixed(2)+'° orizzontali';
   $('nativeCoverage').textContent=(info.requestedCameraUnavailable?'La fotocamera precedente non è disponibile. Selezionata Automatica. ':'')+(info.covered?'Il frame è coperto dalla fotocamera.':'La parte esterna alla copertura resta vuota: la fotocamera non può riprenderla.');
 }
-function onPhoneCameraChange(){if(!nativeCamera){webSelectedID=$('phoneCameraSel').value;localStorage.setItem('optical.web.camera',webSelectedID);webInfo=null;startCamera();return;}S.phoneCameraID=$('phoneCameraSel').value;saveSettings();requestNativeConfiguration();}
+function onPhoneCameraChange(){if(!nativeCamera){webSelectedID=$('phoneCameraSel').value;localStorage.setItem('optical.web.camera',webSelectedID);webCameraEpoch++;webBlocked.clear();webCameraWarning='';startCamera();return;}S.phoneCameraID=$('phoneCameraSel').value;saveSettings();requestNativeConfiguration();}
 function lockCaptureControls(locked){
   for(const el of document.querySelectorAll('#settModal button,#settModal select,#settModal input,#cameraMenuButton,#btnNext,#btnPrev,#shotBtn,#gallContainer')){
     if(el.id==='gallContainer')el.style.pointerEvents=locked?'none':'';else el.disabled=locked;
@@ -412,7 +489,7 @@ function cameraMessage(message){
   if(!panel){
     panel=document.createElement('div');panel.id='cameraMessage';
     const text=document.createElement('p');panel.appendChild(text);
-    const retry=document.createElement('button');retry.textContent='Riprova';retry.onclick=()=>startCamera();panel.appendChild(retry);
+    const retry=document.createElement('button');retry.textContent='Riprova';retry.onclick=()=>startCamera(true);panel.appendChild(retry);
     if(window.OpticalNative){
       const settings=document.createElement('button');settings.textContent='Impostazioni iPhone';
       settings.onclick=()=>OpticalNative.openSettings();panel.appendChild(settings);
@@ -428,47 +505,54 @@ async function waitForVideoFrame(){
     await new Promise(resolve=>setTimeout(resolve,50));
   }
 }
-function startCamera(){
+function startCamera(force=false){
   if(cameraStartPromise)return cameraStartPromise;
+  if(isRecording||recordingStarting||photoInProgress||document.visibilityState!=='visible')return Promise.resolve();
+  clearTimeout(webSelectionTimer);
+  const epoch=webCameraEpoch;if(force){webBlocked.clear();webCameraWarning='';}
   cameraStartPromise=(async()=>{
+    await Promise.resolve();setWebBusy(true);
     try{
-      cameraReady=false;
-      if(window.OpticalNative&&await OpticalNative.cameraAvailable()){
-        nativeCamera=true;nativeSuspended=false;document.documentElement.classList.add('native-camera');
-        $('legacyFovControls').hidden=true;$('nativeOpticsControls').hidden=false;document.querySelectorAll('.tab-btn')[4].textContent='CALIBRA';
-        await configureNativeCamera(true);return;
-      }
-      if(video.srcObject)video.srcObject.getTracks().forEach(t=>t.stop());
       if(!navigator.mediaDevices?.getUserMedia)throw new Error('Fotocamera non disponibile.');
-      const stream=await navigator.mediaDevices.getUserMedia({
-        audio:false,
-        video:{...(webSelectedID?{deviceId:{exact:webSelectedID}}:{facingMode:{ideal:'environment'}}),width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:30},resizeMode:{ideal:'none'}}
-      });
-      video.srcObject=stream;await video.play();await waitForVideoFrame();webInfo=null;detectFOV(stream);cameraReady=true;cameraMessage('');
-    }catch(e){
-      if(!nativeCamera&&e.name==='OverconstrainedError'&&webSelectedID){webSelectedID='';localStorage.removeItem('optical.web.camera');cameraMessage('La fotocamera salvata non è disponibile. Premi Riprova per selezionarne una disponibile.');return;}
-      console.error('Camera:',e);
-      cameraMessage(nativeCamera?e.message:(e.name==='NotAllowedError'
-        ?'Consenti l’accesso alla fotocamera nelle Impostazioni e premi Riprova.'
-        :'Fotocamera non disponibile. Controlla i permessi e riprova.'));
-    }finally{cameraStartPromise=null;}
+      if(!hasWebStream()||(webSelectedID!=='auto'&&activeWebID()!==webSelectedID)){
+        try{await openWebCamera(webSelectedID==='auto'?'':webSelectedID,epoch);}
+        catch(error){
+          if(error.name==='OverconstrainedError'&&webSelectedID!=='auto'){
+            webSelectedID='auto';localStorage.setItem('optical.web.camera','auto');webCameraWarning='La fotocamera precedente non è disponibile: selezionata Automatica.';await openWebCamera('',epoch);
+          }else throw error;
+        }
+      }
+      await populateWebCameras();
+      if(epoch!==webCameraEpoch)throw new DOMException('Cambio annullato','AbortError');
+      refreshWebOptics();await settleWebAutoCamera(epoch);
+      if(epoch!==webCameraEpoch)throw new DOMException('Cambio annullato','AbortError');
+      if(webSelectedID!=='auto'&&activeWebID()&&webSelectedID!==activeWebID()){webSelectedID=activeWebID();localStorage.setItem('optical.web.camera',webSelectedID);}
+      refreshWebOptics();cameraMessage('');
+    }catch(error){
+      if(error.name!=='AbortError'){console.error('Camera:',error);cameraMessage(error.name==='NotAllowedError'?'Consenti l’accesso alla fotocamera nelle Impostazioni e premi Riprova.':'Fotocamera non disponibile. Controlla i permessi e riprova.');}
+    }finally{
+      cameraStartPromise=null;
+      const again=epoch!==webCameraEpoch&&document.visibilityState==='visible';
+      if(again)setTimeout(()=>startCamera(),0);
+      else{setWebBusy(false);cameraReady=hasWebStream();updateWebCameraStatus();}
+    }
   })();
   return cameraStartPromise;
 }
 
 // ─── BLACK SCREEN RECOVERY ────────────────────────────────────────────────────
 function checkAndRestartCamera(){
-  if(document.visibilityState!=='visible'||cameraStartPromise||recordingStarting)return;
+  if(document.visibilityState!=='visible'||cameraStartPromise||recordingStarting||photoInProgress)return;
   if(nativeCamera)nativeSuspended=false;
   if(nativeCamera&&isRecording){stopNativeRecording();return;}
   if(isRecording)return;
   if(nativeCamera){configureNativeCamera(true).catch(e=>cameraMessage(e.message));return;}
   if(!video.srcObject||!video.srcObject.active||video.paused||video.readyState<2){
     startCamera();
-  }
+  }else requestWebCameraSelection();
 }
 document.addEventListener('visibilitychange',()=>{
-  if(document.visibilityState==='visible')checkAndRestartCamera();
+  if(document.visibilityState==='visible')checkAndRestartCamera();else webCameraEpoch++;
 });
 window.opticalInterfaceChanged=()=>{
   applyLandscape();
@@ -496,7 +580,7 @@ window.opticalPause=()=>{
 };
 
 function toggleRecording(){
-  if(recordingStarting||photoInProgress)return;
+  if(recordingStarting||photoInProgress||webSwitchPending||cameraStartPromise)return;
   if(!cameraReady){cameraMessage('Attiva la fotocamera prima di registrare.');return;}
   if(!isRecording&&videos.length>=MAX_VIDEOS){showMemoryFull();return;}
   isRecording?stopRecording():startRecording();
@@ -577,7 +661,7 @@ function recDrawLoop(){
 
 async function startRecording(){
   if(nativeCamera)return startNativeRecording();
-  const recordingOptics={...webInfo,targetHFOV:getHFOV()};
+  const recordingOptics={...webInfo,targetHFOV:getHFOV()},recordingCameraStream=video.srcObject;
   recordingStarting=true;lockCaptureControls(true);
   try{
     if(typeof MediaRecorder==='undefined')throw new Error('Registrazione non supportata su questo dispositivo.');
@@ -635,7 +719,8 @@ async function startRecording(){
       persistGallery();
       updateGalleryThumb();
       isRecording=false;lockCaptureControls(false);clearInterval(recTimer);recSecs=0;updateRecBtn();
-      video.srcObject?.getAudioTracks().forEach(t=>{t.stop();video.srcObject.removeTrack(t);});
+      recordingCameraStream?.getAudioTracks().forEach(t=>{t.stop();recordingCameraStream.removeTrack(t);});
+      requestWebCameraSelection();
     };
     mediaRecorder.onerror=e=>{console.error('MediaRecorder:',e);stopRecording();};
     mediaRecorder.start(500);
@@ -817,11 +902,11 @@ function draw(){
 
 // ─── SCREENSHOT ───────────────────────────────────────────────────────────────
 function captureScreenshot(){
-  if(isRecording||recordingStarting||photoInProgress)return;
+  if(isRecording||recordingStarting||photoInProgress||webSwitchPending||cameraStartPromise)return;
   if(!cameraReady){cameraMessage('Attiva la fotocamera prima di scattare.');return;}
   if(screenshots.length>=MAX_SHOTS){showMemoryFull();return;}
   noTextOverlay=true;photoInProgress=true;if(nativeCamera)lockCaptureControls(true);
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{Promise.resolve(doCapture()).catch(e=>alert('Foto non acquisita: '+e.message)).finally(()=>{noTextOverlay=false;photoInProgress=false;if(nativeCamera)lockCaptureControls(false);});}));
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{Promise.resolve(doCapture()).catch(e=>alert('Foto non acquisita: '+e.message)).finally(()=>{noTextOverlay=false;photoInProgress=false;if(nativeCamera)lockCaptureControls(false);else requestWebCameraSelection();});}));
 }
 
 // Keep exported information in a separate two-row footer, with bounded columns.
@@ -1085,14 +1170,14 @@ function updateSidebar(){
   const enabled=enabledFocalIndices();
   $('btnPrev').disabled=!enabled.some(i=>i<S.focalIdx);
   $('btnNext').disabled=!enabled.some(i=>i>S.focalIdx);
-  if(nativeCamera)requestNativeConfiguration();
+  if(nativeCamera)requestNativeConfiguration();else requestWebCameraSelection();
 }
 function buildAll(){
   buildBrandChips();buildCamSel();buildModeSel();buildSensorMeta();
   buildLensBrandChips();buildSeriesSel();buildFocalChips();buildARChips();buildLensMeta();
   buildOverlayChips();buildColorChips();buildFovPresets();updateFovStatus();updateSidebar();
   const sl=$('fovSlider');if(sl)sl.value=S.phoneFOV;
-  const fv=$('fovVal');if(fv)fv.textContent=S.phoneFOV+'°';
+  const fv=$('fovVal');if(fv)fv.textContent=Number(S.phoneFOV).toFixed(1)+'°';
 }
 
 // ─── HANDLERS ─────────────────────────────────────────────────────────────────
@@ -1129,18 +1214,20 @@ function nextFocalEv(e){
 function setAR(i){S.arIdx=i;buildARChips();updateSidebar();saveSettings();}
 function toggleOv(k){S.overlays[k]=!S.overlays[k];buildOverlayChips();saveSettings();}
 function onFovChange(){
-  if(isRecording||recordingStarting||photoInProgress)return;
+  if(isRecording||recordingStarting||photoInProgress||webSwitchPending||cameraStartPromise)return;
   const key=webSignature(),hfov=+$('fovSlider').value;if(!key||!Number.isFinite(hfov)||hfov<5.1||hfov>169.9)return;
   try{localStorage.setItem('optical.web.fov.'+key,JSON.stringify({hfov,method:'slider'}));}catch(e){alert('Non riesco a salvare la regolazione.');return;}
   webInfo=null;refreshWebOptics();saveSettings();
 }
-function commitFovChange(){} // Browser changes are immediate and saved by oninput.
+function commitFovChange(){requestWebCameraSelection();}
 function resetFovAuto(){
-  if(isRecording||recordingStarting||photoInProgress)return;
+  if(isRecording||recordingStarting||photoInProgress||webSwitchPending||cameraStartPromise)return;
   const key=webSignature();if(!key)return;
   try{localStorage.removeItem('optical.web.fov.'+key);localStorage.removeItem('optical.web.calibration.'+key);}catch(e){alert('Non riesco a ripristinare il FOV.');return;}
-  webInfo=null;refreshWebOptics();saveSettings();
+  webInfo=null;refreshWebOptics();saveSettings();requestWebCameraSelection();
 }
+
+if(navigator.mediaDevices?.addEventListener)navigator.mediaDevices.addEventListener('devicechange',()=>{if(cameraStartPromise){webDevicesDirty=true;return;}webBlocked.clear();webCameraWarning='';if(!isRecording&&!recordingStarting&&!photoInProgress&&document.visibilityState==='visible')startCamera();});
 
 // ─── LAUNCH ───────────────────────────────────────────────────────────────────
 (async function(){
